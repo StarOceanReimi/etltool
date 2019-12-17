@@ -11,6 +11,8 @@ import com.limin.etltool.database.util.nameconverter.NameConverter;
 import com.limin.etltool.database.util.nameconverter.NopNameConverter;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.beanutils.ConvertUtils;
+import org.apache.commons.beanutils.Converter;
 import org.apache.commons.beanutils.PropertyUtils;
 
 import java.beans.PropertyDescriptor;
@@ -28,6 +30,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 import static com.limin.etltool.util.Exceptions.propagate;
+import static java.util.stream.Collectors.toMap;
 
 /**
  * @author 邱理
@@ -90,14 +93,29 @@ public abstract class DatabaseUtils {
 
         try {
             INameConverter converter = converterCache.get(clazz);
-            Map<String, PropertyDescriptor> descriptorMap =
-                    Arrays.stream(beanDescriptors).collect(Collectors.toMap((p) -> converter.rename(p.getDisplayName()), v->v));
+            Map<String, PropertyDescriptor> descriptorMap = Arrays.stream(beanDescriptors)
+                            .collect(toMap((p) -> converter.rename(p.getDisplayName()), v->v));
             for (JdbcClassFieldDescriptor descriptor : descriptors) {
                 PropertyDescriptor beanDescriptor = descriptorMap.get(descriptor.getFieldName());
                 if(beanDescriptor == null) continue;
                 Method writeMethod = beanDescriptor.getWriteMethod();
                 try {
-                    writeMethod.invoke(bean, descriptor.getValue());
+                    Class<?> paramType = writeMethod.getParameterTypes()[0];
+                    if(descriptor.getValue() != null) {
+                        Object value = descriptor.getValue();
+                        Class<?> realType = value.getClass();
+                        if(!paramType.isAssignableFrom(realType)) {
+                            Converter c = ConvertUtils.lookup(realType, paramType);
+                            if(c == null) {
+                                log.warn("cannot convert {} to {} for property {} in class {}",
+                                        realType, paramType, descriptor.getFieldName(), clazz);
+                                continue;
+                            }
+                            value = c.convert(paramType, value);
+                        }
+                        writeMethod.invoke(bean, value);
+                    }
+
                 } catch (IllegalAccessException | InvocationTargetException e) {
                     log.warn("cannot set property {} of class {}", descriptor.getFieldName(), clazz);
                 }
