@@ -18,7 +18,7 @@ import static com.limin.etltool.util.QueryStringUtils.wrapToQueryStringMap;
  */
 public abstract class AbstractJdbcDatabaseSource implements DatabaseSource {
 
-    private final DatabaseConfiguration configuration;
+    protected final DatabaseConfiguration configuration;
 
     public AbstractJdbcDatabaseSource(DatabaseConfiguration configuration) {
         this.configuration = configuration;

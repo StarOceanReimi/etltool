@@ -7,7 +7,8 @@ import com.limin.etltool.core.Output;
  * @description
  * @date 创建于 2019/12/16
  */
-public interface DatabaseOutput extends Output, DatabaseProperties {
+public interface DatabaseOutput<T> extends Output<T>, DatabaseProperties {
 
+    DatabaseOutputType getDatabaseOutputType();
 
 }

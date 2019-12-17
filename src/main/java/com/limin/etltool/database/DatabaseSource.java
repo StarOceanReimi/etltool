@@ -11,6 +11,7 @@ import java.sql.Connection;
  */
 public interface DatabaseSource extends Source {
 
+    DatabaseSource configureConnectionProperties(String name, Object value);
 
     /**
      * 获取数据库连接

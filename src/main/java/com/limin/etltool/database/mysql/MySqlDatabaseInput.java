@@ -4,6 +4,7 @@ import com.google.common.base.Stopwatch;
 import com.limin.etltool.core.Batch;
 import com.limin.etltool.core.BatchInput;
 import com.limin.etltool.core.EtlException;
+import com.limin.etltool.core.Input;
 import com.limin.etltool.database.AbstractDatabaseInput;
 import com.limin.etltool.database.DatabaseConfiguration;
 import com.limin.etltool.database.DatabaseSource;
@@ -15,7 +16,8 @@ import org.apache.commons.beanutils.PropertyUtils;
 
 import java.beans.FeatureDescriptor;
 import java.util.Arrays;
-import java.util.List;
+import java.util.Collection;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -61,15 +63,7 @@ public class MySqlDatabaseInput<T> extends AbstractDatabaseInput<T> {
                 .attribute("allowMultiQueries", true);
 
         DatabaseSource source = new MySqlDatabaseSource(configuration);
-        val sw = Stopwatch.createStarted();
-        BatchInput<TestBean> input = new MySqlDatabaseInput<TestBean> ("uc_login_log") {};
-        Batch<TestBean> batch = input.readInBatch(source, 1024);
-        int count = 0;
-        while (batch.hasMore()) {
-            count += batch.getMore().size();
-        }
-        batch.release();
-        System.out.println(count);
-        System.out.println(sw.stop());
+        Input input = new MySqlDatabaseInput("co_comment");
+        Collection<Map<String, Object>> col = input.readCollection(source);
     }
 }

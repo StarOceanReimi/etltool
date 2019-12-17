@@ -2,6 +2,7 @@ package com.limin.etltool.database.mysql;
 
 import com.limin.etltool.database.AbstractJdbcDatabaseSource;
 import com.limin.etltool.database.DatabaseConfiguration;
+import com.limin.etltool.database.DatabaseSource;
 
 /**
  * @author 邱理
@@ -12,5 +13,16 @@ public class MySqlDatabaseSource extends AbstractJdbcDatabaseSource {
 
     public MySqlDatabaseSource(DatabaseConfiguration configuration) {
         super(configuration);
+    }
+
+    @Override
+    public DatabaseSource configureConnectionProperties(String name, Object value) {
+
+        if(value == null && configuration.getAttributes().containsKey(name)) {
+            configuration.getAttributes().remove(name);
+        } else if (value != null) {
+            configuration.getAttributes().put(name, value);
+        }
+        return this;
     }
 }

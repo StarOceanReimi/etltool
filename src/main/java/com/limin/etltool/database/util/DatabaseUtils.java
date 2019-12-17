@@ -38,15 +38,7 @@ import static com.limin.etltool.util.Exceptions.propagate;
 public abstract class DatabaseUtils {
 
     private static LoadingCache<Class<?>, INameConverter> converterCache = CacheBuilder.newBuilder()
-            .build(CacheLoader.from((key) -> {
-                if(!key.isAnnotationPresent(NameConverter.class)) return new NopNameConverter();
-                NameConverter converter = key.getAnnotation(NameConverter.class);
-                try {
-                    return converter.value().newInstance();
-                } catch (InstantiationException | IllegalAccessException e) {
-                    return new NopNameConverter();
-                }
-            }));
+            .build(CacheLoader.from(INameConverter::getConverter));
 
     @SuppressWarnings("unchecked")
     public static <T> T readObjectFromResultSet(ResultSet resultSet, Class<T> clazz) throws SQLException {
