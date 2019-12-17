@@ -22,7 +22,7 @@ import static java.util.Optional.ofNullable;
  * @description
  * @date 创建于 2019/12/17
  */
-public class DatabaseBatchObject<T> implements Batch<T> {
+class DatabaseBatchObject<T> implements Batch<T> {
 
     private final ResultSet resultSet;
 
@@ -34,7 +34,8 @@ public class DatabaseBatchObject<T> implements Batch<T> {
 
     private AtomicReference<T> initTestObject;
 
-    public DatabaseBatchObject(ResultSet resultSet, int batchSize, Class<T> componentType) {
+    @SuppressWarnings("unchecked")
+    DatabaseBatchObject(ResultSet resultSet, int batchSize, Class<T> componentType) {
         Objects.requireNonNull(resultSet);
         Preconditions.checkArgument(batchSize > 0, "batchSize must be positive");
         this.resultSet = resultSet;
