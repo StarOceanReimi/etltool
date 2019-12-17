@@ -3,11 +3,12 @@ package com.limin.etltool.database;
 import com.limin.etltool.core.EtlException;
 import com.limin.etltool.core.OutputReport;
 import com.limin.etltool.core.Source;
+import com.limin.etltool.database.util.JdbcSqlParamObject;
+import com.limin.etltool.database.util.SqlBuilder;
 import com.limin.etltool.util.Exceptions;
 import lombok.Data;
 import org.apache.commons.collections.CollectionUtils;
 
-import javax.sql.DataSource;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.sql.Connection;
@@ -38,7 +39,9 @@ public class AbstractDatabaseOutput<T> implements DatabaseOutput<T> {
 
     private Class<T> componentType;
 
-    public AbstractDatabaseOutput(DatabaseOutputType databaseOutputType, Class<T> componentType) {
+    public AbstractDatabaseOutput(String table, DatabaseOutputType databaseOutputType, Class<T> componentType) {
+        this.table = table;
+        this.report = new DatabaseOutputReport(table);
         this.databaseOutputType = databaseOutputType;
         if(componentType == null && getClass().getGenericSuperclass() instanceof ParameterizedType) {
             Type type = ((ParameterizedType) getClass().getGenericSuperclass()).getActualTypeArguments()[0];
@@ -60,12 +63,18 @@ public class AbstractDatabaseOutput<T> implements DatabaseOutput<T> {
             return true;
         }
 
-        T sample = dataCollection.stream().findFirst().get();
-
         DatabaseSource databaseSource = (DatabaseSource) outputSource;
         optimizeForWrite(databaseSource);
         Connection connection = databaseSource.getConnection();
-        PreparedStatement preparedStatement = buildOutputStatement(connection, sample);
+
+        JdbcSqlParamObject jdbcSqlParamObject = buildJdbcSqlParamObject(getDatabaseOutputType());
+        PreparedStatement preparedStatement = null;
+
+        try {
+            preparedStatement = buildOutputStatement(connection, jdbcSqlParamObject.getJdbcSql());
+        } catch (SQLException e) {
+            rethrow(e);
+        }
 
         int count = 0;
 
@@ -79,8 +88,8 @@ public class AbstractDatabaseOutput<T> implements DatabaseOutput<T> {
                     report.logErrorResult(e);
                 }
             }
-            setStatementParameter(preparedStatement, data);
             try {
+                setStatementParameter(preparedStatement, data, jdbcSqlParamObject);
                 preparedStatement.addBatch();
             } catch (SQLException e) {
                 report.logErrorResult(e);
@@ -105,23 +114,55 @@ public class AbstractDatabaseOutput<T> implements DatabaseOutput<T> {
         return report.hasError();
     }
 
-    private void setStatementParameter(PreparedStatement preparedStatement, T data) {
-        Object[] args = buildParameters(data);
+//    private List<String> mergeColumns(T sample) {
+//        Set<String> sampleColumns;
+//        if(sample instanceof Map)
+//            sampleColumns = ((Map) sample).keySet();
+//        else {
+//            PropertyDescriptor[] descriptors = PropertyUtils.getPropertyDescriptors(sample.getClass());
+//            sampleColumns = Arrays.stream(descriptors).map(FeatureDescriptor::getDisplayName)
+//                    .filter(name -> !name.equals("class"))
+//                    .collect(Collectors.toSet());
+//        }
+//        if (CollectionUtils.isEmpty(columns)) {
+//            columns = Lists.newArrayList();
+//            columns.addAll(sa)
+//        }
+//
+//    }
 
+    private JdbcSqlParamObject buildJdbcSqlParamObject(DatabaseOutputType databaseOutputType) {
+
+        switch (databaseOutputType.getType()) {
+            case DatabaseOutputType.INSERT:
+                return SqlBuilder.insertBuilder().table(table)
+                        .columns(databaseOutputType.getColumns()).build();
+            case DatabaseOutputType.UPDATE:
+                return SqlBuilder.updateBuilder().table(table)
+                        .columns(databaseOutputType.getColumns())
+                        .idName(databaseOutputType.getIdName()).build();
+            case DatabaseOutputType.DELETE:
+                return SqlBuilder.deleteBuilder().table(table)
+                        .idName(databaseOutputType.getIdName()).build();
+        }
+        throw Exceptions.unsupported("unexpected type");
+    }
+
+    private void setStatementParameter(
+            PreparedStatement preparedStatement,
+            T data, JdbcSqlParamObject jdbcSqlParamObject) throws SQLException {
+
+        Object[] params = jdbcSqlParamObject.buildParam(data);
+        for(int i = 1; i <= params.length; i++)
+            preparedStatement.setObject(i, params[i-1]);
     }
 
     protected void optimizeForWrite(DatabaseSource databaseSource) {
 
     }
 
-    protected Object[] buildParameters(T data) {
-
-        return null;
-    }
-
-    protected PreparedStatement buildOutputStatement(Connection connection, T sample) {
-
-        return null;
+    protected PreparedStatement buildOutputStatement(Connection connection, String sql) throws SQLException {
+        return connection.prepareStatement(sql);
     }
 
 }

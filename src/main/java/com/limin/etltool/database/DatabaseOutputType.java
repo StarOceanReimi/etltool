@@ -6,7 +6,9 @@ import com.google.common.collect.Sets;
 import com.limin.etltool.database.util.nameconverter.INameConverter;
 import com.limin.etltool.database.util.nameconverter.NameConverter;
 import com.limin.etltool.util.TemplateUtils;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import net.sf.jsqlparser.statement.delete.Delete;
 import org.apache.commons.beanutils.PropertyUtils;
 import org.apache.commons.collections.CollectionUtils;
 
@@ -29,91 +31,61 @@ import static java.util.stream.Collectors.toSet;
  */
 public interface DatabaseOutputType {
 
-    Joiner COMMA_JOINER = Joiner.on(",").skipNulls();
+    int INSERT = 1;
+    int UPDATE = 2;
+    int DELETE = 3;
 
-    String getSqlTemplate(String table, List<String> columns, Object sample);
+    List<String> getColumns();
 
-    Object[] buildSqlParams(Object sample);
+    String getIdName();
 
-    String getIdField();
+    int getType();
 
+    @Data
+    @AllArgsConstructor
     class Insert implements DatabaseOutputType {
 
-        private static final String INSERTION_TEMPLATE = "INSERT INTO {} VALUES {}";
-
+        private List<String> columns;
 
         @Override
-        public String getSqlTemplate(String table, List<String> columns, Object sample) {
-            Set<String> sampleColumns;
-            if(sample instanceof Map) {
-                sampleColumns = ((Map) sample).keySet();
-            } else {
-                PropertyDescriptor[] descriptors = PropertyUtils.getPropertyDescriptors(sample);
-                INameConverter converter = INameConverter.getConverter(sample.getClass());
-                sampleColumns = Arrays.stream(descriptors)
-                        .map(p -> converter.rename(p.getDisplayName())).collect(toSet());
-            }
-
-            if (CollectionUtils.isEmpty(columns)) {
-                columns = Lists.newArrayList(sampleColumns);
-            }
-            else {
-                columns = columns.stream().filter(sampleColumns::contains).collect(toList());
-            }
-
-            String columnString = COMMA_JOINER.join(columns);
-            String placeHolder = IntStream.range(0, columns.size()).mapToObj(i -> "?").collect(Collectors.joining(","));
-
-            return TemplateUtils.logFormat(INSERTION_TEMPLATE, columnString, "(" + placeHolder + ")");
+        public String getIdName() {
+            return null;
         }
 
         @Override
-        public Object[] buildSqlParams(Object sample) {
-            return new Object[0];
+        public int getType() {
+            return INSERT;
         }
-
-        @Override
-        public String getIdField() { return null; }
     }
 
+    @Data
+    @AllArgsConstructor
     class Update implements DatabaseOutputType {
 
-        private String idField;
+        private String idName;
+
+        private List<String> columns;
 
         @Override
-        public String getSqlTemplate(String table, List<String> columns, Object sample) {
-            return null;
-        }
-
-        @Override
-        public Object[] buildSqlParams(Object sample) {
-            return new Object[0];
-        }
-
-        @Override
-        public String getIdField() {
-            return idField;
+        public int getType() {
+            return UPDATE;
         }
     }
 
+    @Data
+    @AllArgsConstructor
     class Delete implements DatabaseOutputType {
 
-        private String idField;
+        private String idName;
 
         @Override
-        public String getSqlTemplate(String table, List<String> columns, Object sample) {
+        public List<String> getColumns() {
             return null;
         }
 
         @Override
-        public Object[] buildSqlParams(Object sample) {
-            return new Object[0];
-        }
-
-        @Override
-        public String getIdField() {
-            return idField;
+        public int getType() {
+            return DELETE;
         }
     }
-
 }

@@ -3,6 +3,8 @@ package com.limin.etltool.util;
 import com.limin.etltool.core.EtlException;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.Objects;
+
 /**
  * @author 邱理
  * @description
@@ -20,8 +22,10 @@ public abstract class Exceptions {
     }
 
     public static EtlException inform(String message, Object... args) {
-
         return new EtlException(TemplateUtils.logFormat(message, args));
     }
 
+    public static UnsupportedOperationException unsupported(String message, Object... args) {
+        return new UnsupportedOperationException(TemplateUtils.logFormat(message, args));
+    }
 }
