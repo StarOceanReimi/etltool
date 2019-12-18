@@ -11,7 +11,10 @@ import com.limin.etltool.util.Exceptions;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
+import org.apache.commons.beanutils.ConvertUtils;
+import org.apache.commons.beanutils.Converter;
 import org.apache.commons.beanutils.PropertyUtils;
+import org.apache.commons.beanutils.converters.ConverterFacade;
 import org.apache.commons.collections.CollectionUtils;
 
 import java.lang.reflect.Field;
@@ -144,6 +147,8 @@ public abstract class AbstractDbOutput<T> extends DbSupport<T> implements DbOutp
                 } else if(idKeyMethodOrField != null) {
                     if(idKeyMethodOrField instanceof Method) {
                         try {
+                            Class<?> paramType = ((Method) idKeyMethodOrField).getParameterTypes()[0];
+                            key = convertIfNeeded(paramType, key);
                             ((Method) idKeyMethodOrField).invoke(bean, key);
                         } catch (IllegalAccessException | InvocationTargetException e) {
                             log.warn("cannot invoke setter: {}", idKeyMethodOrField);
@@ -151,6 +156,8 @@ public abstract class AbstractDbOutput<T> extends DbSupport<T> implements DbOutp
                     } else if(idKeyMethodOrField instanceof Field) {
                         ((Field) idKeyMethodOrField).setAccessible(true);
                         try {
+                            Class<?> fieldType = ((Field) idKeyMethodOrField).getType();
+                            key = convertIfNeeded(fieldType, key);
                             ((Field) idKeyMethodOrField).set(bean, key);
                         } catch (IllegalAccessException e) {
                             log.warn("cannot set field {}", idKeyMethodOrField);
@@ -159,6 +166,13 @@ public abstract class AbstractDbOutput<T> extends DbSupport<T> implements DbOutp
                 }
             }
         }
+    }
+
+    private Object convertIfNeeded(Class<?> paramType, Object key) {
+        if(paramType.isAssignableFrom(key.getClass())) return key;
+        Converter converter = ConvertUtils.lookup(key.getClass(), paramType);
+        if(converter == null) return key;
+        return converter.convert(paramType, key);
     }
 
 }

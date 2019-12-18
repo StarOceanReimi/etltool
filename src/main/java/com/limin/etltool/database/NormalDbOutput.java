@@ -31,7 +31,7 @@ public class NormalDbOutput<T> extends AbstractDbOutput<T> {
     public static class TestBean {
 
         @IdKey
-        private Long id;
+        private String id;
 
         private String name;
 
