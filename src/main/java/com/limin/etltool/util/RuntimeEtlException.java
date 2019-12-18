@@ -10,4 +10,8 @@ public class RuntimeEtlException extends RuntimeException {
     public RuntimeEtlException(Throwable throwable) {
         super(throwable);
     }
+
+    public RuntimeEtlException(String message) {
+        super(message);
+    }
 }

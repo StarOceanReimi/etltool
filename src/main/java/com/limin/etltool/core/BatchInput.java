@@ -17,12 +17,12 @@ public interface BatchInput<T> extends Input<T> {
 
     int DEFAULT_BATCH_SIZE = 1024;
 
-    Batch<T> readInBatch(Source inputSource, int batchSize) throws EtlException;
+    Batch<T> readInBatch(int batchSize) throws EtlException;
 
-    default void consumeBatch(Source inputSource, int batchSize, Consumer<Collection<T>> batchConsumer) {
+    default void consumeBatch(int batchSize, Consumer<Collection<T>> batchConsumer) {
         Batch<T> batch = null;
         try {
-            batch = readInBatch(inputSource, batchSize);
+            batch = readInBatch(batchSize);
             while (batch.hasMore())
                 batchConsumer.accept(batch.getMore());
         } catch (EtlException ex) {
@@ -34,9 +34,9 @@ public interface BatchInput<T> extends Input<T> {
     }
 
     @Override
-    default Collection<T> readCollection(Source inputSource) throws EtlException {
+    default Collection<T> readCollection() throws EtlException {
         List<T> result = Lists.newArrayList();
-        consumeBatch(inputSource, DEFAULT_BATCH_SIZE, (Consumer<Collection<T>>) result::addAll);
+        consumeBatch(DEFAULT_BATCH_SIZE, result::addAll);
         return result;
     }
 }

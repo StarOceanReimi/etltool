@@ -7,8 +7,6 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.limin.etltool.database.util.nameconverter.INameConverter;
-import com.limin.etltool.database.util.nameconverter.NameConverter;
-import com.limin.etltool.database.util.nameconverter.NopNameConverter;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.beanutils.ConvertUtils;
@@ -19,6 +17,7 @@ import java.beans.PropertyDescriptor;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
@@ -27,7 +26,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
-import java.util.stream.Collectors;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static com.limin.etltool.util.Exceptions.propagate;
 import static java.util.stream.Collectors.toMap;
@@ -42,6 +42,22 @@ public abstract class DatabaseUtils {
 
     private static LoadingCache<Class<?>, INameConverter> converterCache = CacheBuilder.newBuilder()
             .build(CacheLoader.from(INameConverter::getConverter));
+
+    private static final Pattern PARAMS_PATTERN = Pattern.compile("(:\\w+)");
+
+    public static JdbcSqlParamObject buildSqlParamObject(String sqlTemplate) {
+        String template = sqlTemplate;
+        Matcher matcher = PARAMS_PATTERN.matcher(template);
+        List<String> paramNames = Lists.newArrayList();
+        StringBuffer result = new StringBuffer();
+        while (matcher.find()) {
+            String paramName = matcher.group(1).substring(1);
+            paramNames.add(paramName);
+            matcher.appendReplacement(result, "?");
+        }
+        matcher.appendTail(result);
+        return new JdbcSqlParamObject(result.toString(), paramNames.toArray(new String[0]));
+    }
 
     @SuppressWarnings("unchecked")
     public static <T> T readObjectFromResultSet(ResultSet resultSet, Class<T> clazz) throws SQLException {
@@ -145,6 +161,11 @@ public abstract class DatabaseUtils {
         return result;
     }
 
+    public static void setParameters(PreparedStatement statement, Object[] params) throws SQLException {
+        if(params == null || params.length == 0) return;
+        for(int i = 1; i <= params.length; i++)
+            statement.setObject(i, params[i - 1]);
+    }
 
     @Data
     private static class JdbcClassFieldDescriptor {

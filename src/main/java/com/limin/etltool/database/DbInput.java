@@ -5,9 +5,8 @@ import com.limin.etltool.core.BatchInput;
 /**
  * @author 邱理
  * @description
- * @date 创建于 2019/12/16
+ * @date 创建于 2019/12/18
  */
-public interface DatabaseInput<T> extends BatchInput<T> {
-
+public interface DbInput<T> extends BatchInput<T> {
 
 }

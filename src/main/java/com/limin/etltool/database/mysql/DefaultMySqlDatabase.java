@@ -1,6 +1,7 @@
-package com.limin.etltool.database;
+package com.limin.etltool.database.mysql;
 
-import com.limin.etltool.util.Exceptions;
+import com.limin.etltool.database.Database;
+import com.limin.etltool.database.DatabaseConfiguration;
 import org.apache.commons.collections.MapUtils;
 
 import java.sql.Connection;
@@ -8,19 +9,20 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 
 import static com.limin.etltool.util.Exceptions.propagate;
+import static com.limin.etltool.util.Exceptions.rethrow;
 import static com.limin.etltool.util.QueryStringUtils.toQueryString;
 import static com.limin.etltool.util.QueryStringUtils.wrapToQueryStringMap;
 
 /**
  * @author 邱理
  * @description
- * @date 创建于 2019/12/17
+ * @date 创建于 2019/12/18
  */
-public abstract class AbstractJdbcDatabaseSource implements DatabaseSource {
+public class DefaultMySqlDatabase implements Database {
 
-    protected final DatabaseConfiguration configuration;
+    private final DatabaseConfiguration configuration;
 
-    public AbstractJdbcDatabaseSource(DatabaseConfiguration configuration) {
+    public DefaultMySqlDatabase(DatabaseConfiguration configuration) {
         this.configuration = configuration;
     }
 
@@ -30,11 +32,12 @@ public abstract class AbstractJdbcDatabaseSource implements DatabaseSource {
         try {
             Class.forName(configuration.getDriverClassName());
         } catch (ClassNotFoundException e) {
-            Exceptions.rethrow(e);
+            rethrow(e);
         }
+
         String url = configuration.getUrl();
 
-        if(!MapUtils.isEmpty(configuration.getAttributes())) {
+        if (!MapUtils.isEmpty(configuration.getAttributes())) {
             url += "?" + toQueryString(wrapToQueryStringMap(configuration.getAttributes()));
         }
 

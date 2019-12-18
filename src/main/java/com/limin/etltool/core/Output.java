@@ -7,13 +7,12 @@ import java.util.Collection;
  * @description
  * @date 创建于 2019/12/16
  */
-public interface Output<T> {
+public interface Output<T> extends Source {
 
     /**
      * 使用输出源消费数据集合
      * @param dataCollection 数据集合
-     * @param outputSource 输出源
      * @return 是否成功
      */
-    boolean writeCollection(Collection<T> dataCollection, Source outputSource) throws EtlException;
+    boolean writeCollection(Collection<T> dataCollection) throws EtlException;
 }

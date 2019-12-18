@@ -7,14 +7,13 @@ import java.util.Collection;
  * @description
  * @date 创建于 2019/12/16
  */
-public interface Input<T> {
+public interface Input<T> extends Source {
 
     /**
      * 从输入源读取数据集合
-     * @param inputSource 输入源
      * @return 数据集合
      * @throws EtlException
      */
-    Collection<T> readCollection(Source inputSource) throws EtlException;
+    Collection<T> readCollection() throws EtlException;
 
 }

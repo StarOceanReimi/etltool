@@ -21,8 +21,8 @@ public abstract class Exceptions {
         return new RuntimeEtlException(throwable);
     }
 
-    public static EtlException inform(String message, Object... args) {
-        return new EtlException(TemplateUtils.logFormat(message, args));
+    public static RuntimeEtlException inform(String message, Object... args) {
+        return new RuntimeEtlException(TemplateUtils.logFormat(message, args));
     }
 
     public static UnsupportedOperationException unsupported(String message, Object... args) {

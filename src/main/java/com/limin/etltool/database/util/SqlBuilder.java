@@ -11,9 +11,6 @@ import org.apache.commons.collections.CollectionUtils;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -26,6 +23,7 @@ public abstract class SqlBuilder {
     static final Joiner COMMA_JOINER = Joiner.on(",").skipNulls();
 
     static final Joiner.MapJoiner SET_JOINER = Joiner.on(",").withKeyValueSeparator(" = ");
+    static final Joiner.MapJoiner AND_WHERE_JOINER = Joiner.on(" and ").withKeyValueSeparator(" = ");
 
     protected String tableName;
 
@@ -33,24 +31,13 @@ public abstract class SqlBuilder {
     private SqlBuilder() {
     }
 
-    private static final Pattern PARAMS_PATTERN = Pattern.compile("(:\\w+)");
-
     public JdbcSqlParamObject build() {
 
         String template = buildSqlTemplate();
-        Matcher matcher = PARAMS_PATTERN.matcher(template);
-        List<String> paramNames = Lists.newArrayList();
-        StringBuffer result = new StringBuffer();
-        while (matcher.find()) {
-            String paramName = matcher.group(1).substring(1);
-            paramNames.add(paramName);
-            matcher.appendReplacement(result, "?");
-        }
-        matcher.appendTail(result);
-        return new JdbcSqlParamObject(result.toString(), paramNames.toArray(new String[0]));
+        return DatabaseUtils.buildSqlParamObject(template);
     }
 
-    protected abstract String buildSqlTemplate();
+    public abstract String buildSqlTemplate();
 
     public static InsertBuilder insertBuilder() {
 
@@ -114,26 +101,23 @@ public abstract class SqlBuilder {
 
             checkArgument(!Strings.isNullOrEmpty(tableName), "tableName cannot be empty");
             checkArgument(!CollectionUtils.isEmpty(updateNames), "updateNames cannot be empty");
-            checkArgument(!Strings.isNullOrEmpty(idName), "idName cannot be empty");
+            checkArgument(!CollectionUtils.isEmpty(conditionNames), "conditionNames cannot be empty");
 
             Map<String, String> updates = updateNames.stream().collect(toMap(n -> n, n -> ":" + n));
             String updateFields = SET_JOINER.join(updates);
-            String cond = logFormat("{} = {}", idName, ":" + idName);
 
-            return TemplateUtils.logFormat(UPDATE_TPL, tableName, updateFields, cond);
+            Map<String, String> conds = conditionNames.stream().collect(toMap(n -> n, n -> ":" + n));
+            String condFields = AND_WHERE_JOINER.join(conds);
+
+            return TemplateUtils.logFormat(UPDATE_TPL, tableName, updateFields, condFields);
         }
 
         private List<String> updateNames = Lists.newArrayList();
 
-        private String idName;
+        private List<String> conditionNames = Lists.newArrayList();
 
         public UpdateBuilder table(String name) {
             this.tableName = name;
-            return this;
-        }
-
-        public UpdateBuilder column(String name) {
-            updateNames.add(name);
             return this;
         }
 
@@ -147,8 +131,13 @@ public abstract class SqlBuilder {
             return this;
         }
 
-        public UpdateBuilder idName(String idName) {
-            this.idName = idName;
+        public UpdateBuilder cond(String... names) {
+            conditionNames.addAll(Arrays.asList(names));
+            return this;
+        }
+
+        public UpdateBuilder cond(List<String> names) {
+            conditionNames.addAll(names);
             return this;
         }
 
@@ -158,13 +147,15 @@ public abstract class SqlBuilder {
 
         private static final String DELETE_TPL = "DELETE FROM {} WHERE {}";
 
-        private String idName;
+        private List<String> conditionNames = Lists.newArrayList();
 
         @Override
         public String buildSqlTemplate() {
             checkArgument(!Strings.isNullOrEmpty(tableName), "tableName cannot be empty");
-            checkArgument(!Strings.isNullOrEmpty(idName), "idName cannot be empty");
-            return logFormat(DELETE_TPL, tableName, logFormat("{} = {}", idName, ":" + idName));
+            checkArgument(!CollectionUtils.isEmpty(conditionNames), "conditionNames cannot be empty");
+            Map<String, String> conds = conditionNames.stream().collect(toMap(n -> n, n -> ":" + n));
+            String condFields = AND_WHERE_JOINER.join(conds);
+            return logFormat(DELETE_TPL, tableName, condFields);
         }
 
         public DeleteBuilder table(String name) {
@@ -172,8 +163,13 @@ public abstract class SqlBuilder {
             return this;
         }
 
-        public DeleteBuilder idName(String idName) {
-            this.idName = idName;
+        public DeleteBuilder cond(String... names) {
+            conditionNames.addAll(Arrays.asList(names));
+            return this;
+        }
+
+        public DeleteBuilder cond(List<String> names) {
+            conditionNames.addAll(names);
             return this;
         }
 
@@ -187,7 +183,11 @@ public abstract class SqlBuilder {
         map.put("age", 33);
 
         JdbcSqlParamObject paramObject =
-                SqlBuilder.insertBuilder().columns("id", "name", "age", "sex").table("my_test").build();
+                SqlBuilder.updateBuilder()
+                        .table("my_test")
+                        .columns("id")
+                        .cond("name", "age").build();
+
 
         System.out.println(paramObject.getJdbcSql());
         System.out.println(Arrays.toString(paramObject.buildParam(map)));
