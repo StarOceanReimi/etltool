@@ -47,4 +47,9 @@ public class DefaultMySqlDatabase implements Database {
             throw propagate(e);
         }
     }
+
+    @Override
+    public DatabaseConfiguration getConfiguration() {
+        return configuration;
+    }
 }

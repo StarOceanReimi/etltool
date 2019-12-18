@@ -1,6 +1,5 @@
 package com.limin.etltool.database;
 
-import com.google.common.reflect.TypeResolver;
 import com.limin.etltool.core.Batch;
 import com.limin.etltool.core.EtlException;
 import com.limin.etltool.database.util.DatabaseUtils;
@@ -9,14 +8,10 @@ import com.limin.etltool.util.Exceptions;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.MapUtils;
 
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
-import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Arrays;
-import java.util.Objects;
 
 import static com.limin.etltool.util.Exceptions.propagate;
 

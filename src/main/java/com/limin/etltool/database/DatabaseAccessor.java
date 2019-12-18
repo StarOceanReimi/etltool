@@ -24,4 +24,6 @@ public interface DatabaseAccessor {
     Map<String, Object> getParams();
 
     boolean accept(Source source);
+
+    String getInsertedReturnKeyName();
 }

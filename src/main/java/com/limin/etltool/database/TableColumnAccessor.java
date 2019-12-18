@@ -15,7 +15,6 @@ import java.util.List;
 import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static java.util.Optional.ofNullable;
 
 /**
  * @author 邱理
@@ -41,6 +40,8 @@ public class TableColumnAccessor implements DatabaseAccessor {
 
     private final SqlType type;
 
+    private String insertedReturnKeyName;
+
     public TableColumnAccessor(SqlType type, String table) {
         checkArgument(!Strings.isNullOrEmpty(table), "table can not be empty");
         this.table = table;
@@ -51,6 +52,11 @@ public class TableColumnAccessor implements DatabaseAccessor {
 
     private List<String> conditions = Lists.newLinkedList();
 
+    public TableColumnAccessor insertedReturnKeyName(String name) {
+        this.insertedReturnKeyName = name;
+        return this;
+    }
+
     public TableColumnAccessor column(String... columnName) {
         columns.addAll(Arrays.asList(columnName));
         return this;
@@ -60,7 +66,6 @@ public class TableColumnAccessor implements DatabaseAccessor {
         conditions.addAll(Arrays.asList(columnName));
         return this;
     }
-
 
     @Override
     public String getSql() {

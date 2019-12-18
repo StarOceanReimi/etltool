@@ -18,6 +18,8 @@ public class DefaultDatabaseAccessor implements DatabaseAccessor {
 
     private Map<String, Object> params = Maps.newHashMap();
 
+    private String insertedReturnKeyName;
+
     public DefaultDatabaseAccessor(String sql) {
         this.sql = sql;
     }
