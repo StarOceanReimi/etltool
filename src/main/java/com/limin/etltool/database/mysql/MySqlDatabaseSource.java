@@ -4,6 +4,8 @@ import com.limin.etltool.database.AbstractJdbcDatabaseSource;
 import com.limin.etltool.database.DatabaseConfiguration;
 import com.limin.etltool.database.DatabaseSource;
 
+import java.util.List;
+
 /**
  * @author 邱理
  * @description
@@ -24,5 +26,15 @@ public class MySqlDatabaseSource extends AbstractJdbcDatabaseSource {
             configuration.getAttributes().put(name, value);
         }
         return this;
+    }
+
+    @Override
+    public String getTable() {
+        return null;
+    }
+
+    @Override
+    public List<String> getColumns() {
+        return null;
     }
 }

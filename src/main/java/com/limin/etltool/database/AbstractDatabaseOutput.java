@@ -27,8 +27,6 @@ import static com.limin.etltool.util.Exceptions.rethrow;
 @Data
 public class AbstractDatabaseOutput<T> implements DatabaseOutput<T> {
 
-    private String table;
-
     private List<String> columns;
 
     private int batchSize;
@@ -39,9 +37,8 @@ public class AbstractDatabaseOutput<T> implements DatabaseOutput<T> {
 
     private Class<T> componentType;
 
-    public AbstractDatabaseOutput(String table, DatabaseOutputType databaseOutputType, Class<T> componentType) {
-        this.table = table;
-        this.report = new DatabaseOutputReport(table);
+    public AbstractDatabaseOutput(DatabaseOutputType databaseOutputType, Class<T> componentType) {
+        this.report = new DatabaseOutputReport();
         this.databaseOutputType = databaseOutputType;
         if(componentType == null && getClass().getGenericSuperclass() instanceof ParameterizedType) {
             Type type = ((ParameterizedType) getClass().getGenericSuperclass()).getActualTypeArguments()[0];
@@ -133,19 +130,9 @@ public class AbstractDatabaseOutput<T> implements DatabaseOutput<T> {
 
     private JdbcSqlParamObject buildJdbcSqlParamObject(DatabaseOutputType databaseOutputType) {
 
-        switch (databaseOutputType.getType()) {
-            case DatabaseOutputType.INSERT:
-                return SqlBuilder.insertBuilder().table(table)
-                        .columns(databaseOutputType.getColumns()).build();
-            case DatabaseOutputType.UPDATE:
-                return SqlBuilder.updateBuilder().table(table)
-                        .columns(databaseOutputType.getColumns())
-                        .idName(databaseOutputType.getIdName()).build();
-            case DatabaseOutputType.DELETE:
-                return SqlBuilder.deleteBuilder().table(table)
-                        .idName(databaseOutputType.getIdName()).build();
-        }
-        throw Exceptions.unsupported("unexpected type");
+
+        return null;
+
     }
 
     private void setStatementParameter(

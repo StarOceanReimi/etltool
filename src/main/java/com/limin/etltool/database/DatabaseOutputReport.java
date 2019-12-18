@@ -6,8 +6,7 @@ public class DatabaseOutputReport implements OutputReport {
 
     private String table;
 
-    public DatabaseOutputReport(String table) {
-        this.table = table;
+    public DatabaseOutputReport() {
     }
 
     @Override

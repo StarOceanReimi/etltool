@@ -11,8 +11,7 @@ public interface INameConverter {
 
     static INameConverter getConverter(Class<?> converterClass) {
 
-        if(converterClass.isAnnotationPresent(NameConverter.class))
-            return DEFAULT;
+        if(!converterClass.isAnnotationPresent(NameConverter.class)) return DEFAULT;
 
         NameConverter converterAnno = converterClass.getAnnotation(NameConverter.class);
         try {

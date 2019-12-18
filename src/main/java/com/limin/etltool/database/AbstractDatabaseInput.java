@@ -29,8 +29,6 @@ import static java.util.Optional.ofNullable;
 @Data
 public abstract class AbstractDatabaseInput<T> implements DatabaseInput<T> {
 
-    private final String table;
-
     private List<String> columns;
 
     protected Class<T> componentType;
@@ -39,8 +37,7 @@ public abstract class AbstractDatabaseInput<T> implements DatabaseInput<T> {
 
     protected static final Joiner COMMA_JOINER = Joiner.on(",").skipNulls();
 
-    public AbstractDatabaseInput(String table, Class<T> componentType) {
-        this.table = table;
+    public AbstractDatabaseInput(Class<T> componentType) {
         if(componentType == null && getClass().getGenericSuperclass() instanceof ParameterizedType) {
             Type type = ((ParameterizedType) getClass().getGenericSuperclass()).getActualTypeArguments()[0];
             if(type instanceof Class)
@@ -54,10 +51,10 @@ public abstract class AbstractDatabaseInput<T> implements DatabaseInput<T> {
      * 一般根据表明和字段名的查询实现
      * @return 查询语句
      */
-    protected PreparedStatement buildPreparedStatement(Connection connection) {
+    protected PreparedStatement buildPreparedStatement(Connection connection, DatabaseSource source) {
         Objects.requireNonNull(connection);
         String columnsList = ofNullable(getColumns()).map(COMMA_JOINER::join).orElse("*");
-        String t = getTable();
+        String t = source.getTable();
         checkArgument(t != null, "table can not be null");
         String sql = logFormat(SIMPLE_QUERY_TEMPLATE, columnsList, t);
         try {
@@ -75,7 +72,7 @@ public abstract class AbstractDatabaseInput<T> implements DatabaseInput<T> {
 
         DatabaseSource source = (DatabaseSource) inputSource;
 
-        PreparedStatement statement = buildPreparedStatement(source.getConnection());
+        PreparedStatement statement = buildPreparedStatement(source.getConnection(), source);
 
         try {
             ResultSet resultSet = statement.executeQuery();
