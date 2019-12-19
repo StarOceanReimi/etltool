@@ -1,6 +1,9 @@
 package com.limin.etltool.database;
 
+import com.limin.etltool.database.mysql.ColumnDefinition;
+
 import java.sql.Connection;
+import java.util.List;
 
 /**
  * @author 邱理
@@ -10,6 +13,10 @@ import java.sql.Connection;
 public interface Database {
 
     Connection getConnection();
+
+    boolean createTable(String table, String tableComment, List<ColumnDefinition> defs);
+
+    boolean executeSQL(String ddl);
 
     DatabaseConfiguration getConfiguration();
 }

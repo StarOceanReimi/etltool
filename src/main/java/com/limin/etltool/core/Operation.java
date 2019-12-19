@@ -4,6 +4,8 @@ import com.google.common.collect.Lists;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * @author 邱理
@@ -12,17 +14,12 @@ import java.util.List;
  */
 public interface Operation<I, O> {
 
-    Input<I> getInput();
-
-    Output<O> getOutput();
-
-    Transformer<I, O> getTransformer();
-
-    /**
-     * 处理从Input -> Transformer -> Output的流程
-     * @param inputSource 输入源
-     * @param outputSource 输出源
-     * @throws EtlException 异常
-     */
-    void process(Source inputSource, Source outputSource) throws EtlException;
+    default void process(Input<I> input, Transformer<I, O> transformer, Output<O> output) throws EtlException {
+        Collection<I> inputCollection = input.readCollection();
+        List<O> buffer = inputCollection.stream()
+                .map(transformer::transform)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+        output.writeCollection(buffer);
+    }
 }

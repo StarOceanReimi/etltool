@@ -1,5 +1,6 @@
 package com.limin.etltool.core;
 
+import java.util.ArrayList;
 import java.util.Collection;
 
 /**
@@ -11,10 +12,13 @@ public interface Filter<E, C extends Collection<E>> extends Transformer<C, C> {
 
     boolean filter(E element);
 
-    C init();
+    @SuppressWarnings("unchecked")
+    default C init() {
+        return (C) new ArrayList<E>();
+    }
 
     @Override
-    default C transform(C data) throws EtlException {
+    default C transform(C data) {
         C result = init();
         for (E datum : data) {
             if (filter(datum)) result.add(datum);

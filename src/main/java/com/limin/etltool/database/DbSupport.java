@@ -21,6 +21,8 @@ public abstract class DbSupport<T> implements AutoCloseable {
 
     protected Class<T> componentType;
 
+    protected Database database;
+
     private static TypeResolver typeResolver = new TypeResolver();
 
     @SuppressWarnings("unchecked")
@@ -41,6 +43,7 @@ public abstract class DbSupport<T> implements AutoCloseable {
             this.componentType = componentType;
         }
         this.accessor = accessor;
+        this.database = database;
         initializeConnection(database);
     }
 

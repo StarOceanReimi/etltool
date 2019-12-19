@@ -15,7 +15,7 @@ public interface DatabaseAccessor {
      * 例如: select id, name, age from A where name = :name
      * @return 可带参数的SQL
      */
-    String getSql();
+    String getSql(Object bean);
 
     /**
      * 例如: { name: 'QL' }

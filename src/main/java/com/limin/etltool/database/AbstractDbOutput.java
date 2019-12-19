@@ -14,7 +14,6 @@ import lombok.val;
 import org.apache.commons.beanutils.ConvertUtils;
 import org.apache.commons.beanutils.Converter;
 import org.apache.commons.beanutils.PropertyUtils;
-import org.apache.commons.beanutils.converters.ConverterFacade;
 import org.apache.commons.collections.CollectionUtils;
 
 import java.lang.reflect.Field;
@@ -67,10 +66,10 @@ public abstract class AbstractDbOutput<T> extends DbSupport<T> implements DbOutp
     @Override
     public boolean writeCollection(Collection<T> dataCollection) throws EtlException {
         if(CollectionUtils.isEmpty(dataCollection)) return false;
-        JdbcSqlParamObject paramObject = DatabaseUtils.buildSqlParamObject(accessor.getSql());
+        T sample = dataCollection.stream().findAny().get();
+        JdbcSqlParamObject paramObject = DatabaseUtils.buildSqlParamObject(accessor.getSql(sample));
         try {
             connection.setAutoCommit(false);
-            T sample = dataCollection.stream().findAny().get();
             PreparedStatement statement = buildPreparedStatement(paramObject, sample);
             int count = 0;
             List<T> temp = returnGeneratedKey == Statement.RETURN_GENERATED_KEYS ? Lists.newLinkedList() : null;

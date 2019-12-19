@@ -9,7 +9,7 @@ import java.util.Objects;
  */
 public interface Transformer<T, R> extends Step {
 
-    R transform(T data) throws EtlException;
+    R transform(T data);
 
     default <V> Transformer<T, V> andThen(Transformer<R, V> transformer) {
         Objects.requireNonNull(transformer);

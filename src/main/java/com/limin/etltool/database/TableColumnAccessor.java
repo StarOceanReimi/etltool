@@ -3,18 +3,30 @@ package com.limin.etltool.database;
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.limin.etltool.core.Source;
+import com.limin.etltool.database.mysql.ColumnDefinitionHelper;
+import com.limin.etltool.database.util.IdKey;
 import com.limin.etltool.database.util.SqlBuilder;
 import com.limin.etltool.util.Exceptions;
+import com.limin.etltool.util.ReflectionUtils;
 import com.limin.etltool.util.TemplateUtils;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.val;
+import org.apache.commons.beanutils.PropertyUtils;
 import org.apache.commons.collections.CollectionUtils;
 
+import java.beans.FeatureDescriptor;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static java.util.Collections.singletonList;
+import static java.util.Optional.ofNullable;
 
 /**
  * @author 邱理
@@ -42,6 +54,10 @@ public class TableColumnAccessor implements DatabaseAccessor {
 
     private String insertedReturnKeyName;
 
+    public TableColumnAccessor(String table) {
+        this(SqlType.SELECT, table);
+    }
+
     public TableColumnAccessor(SqlType type, String table) {
         checkArgument(!Strings.isNullOrEmpty(table), "table can not be empty");
         this.table = table;
@@ -68,12 +84,19 @@ public class TableColumnAccessor implements DatabaseAccessor {
     }
 
     @Override
-    public String getSql() {
+    public String getSql(Object bean) {
         switch (type) {
             case INSERT:
+                if(bean != null && CollectionUtils.isEmpty(columns))
+                    setColumnsWithBean(bean);
                 return SqlBuilder.insertBuilder()
                         .table(table).columns(columns).buildSqlTemplate();
             case UPDATE:
+                if(bean != null && CollectionUtils.isEmpty(columns))
+                    setColumnsWithBean(bean);
+                if(bean != null && CollectionUtils.isEmpty(conditions)) {
+                    setConditions(singletonList(ReflectionUtils.findPropertyNameWithAnnotation(bean, IdKey.class)));
+                }
                 return SqlBuilder.updateBuilder()
                         .table(table).columns(columns)
                         .cond(conditions).buildSqlTemplate();
@@ -89,6 +112,18 @@ public class TableColumnAccessor implements DatabaseAccessor {
         throw Exceptions.unsupported("not expected exception");
     }
 
+    private void setColumnsWithBean(Object bean) {
+        if(bean instanceof Map) {
+            setColumns(Lists.newArrayList(((Map) bean).keySet()));
+        } else {
+            List<String> names = Arrays.stream(PropertyUtils.getPropertyDescriptors(bean.getClass()))
+                    .map(FeatureDescriptor::getDisplayName)
+                    .filter(name -> !"class".equals(name))
+                    .collect(Collectors.toList());
+            setColumns(names);
+        }
+    }
+
     @Override
     public Map<String, Object> getParams() {
         return null;
@@ -99,7 +134,23 @@ public class TableColumnAccessor implements DatabaseAccessor {
         return this.type.accept(source);
     }
 
+
+    @Data
+    @AllArgsConstructor
+    public static class TestBeanClass {
+
+        private String id;
+
+        private String content;
+
+    }
+
     public static void main(String[] args) {
 
+        TestBeanClass testBeanClass = new TestBeanClass("test", "test");
+        val defs = ColumnDefinitionHelper.fromClass(testBeanClass.getClass());
+        String columnDefs = defs.stream().map(Object::toString).collect(Collectors.joining(","));
+        String ddl = TemplateUtils.logFormat("CREATE TABLE {} ({})", "t_test", columnDefs);
+        System.out.println(ddl);
     }
 }

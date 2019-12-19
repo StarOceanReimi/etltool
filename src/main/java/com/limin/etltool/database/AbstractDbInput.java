@@ -32,7 +32,7 @@ public abstract class AbstractDbInput<T> extends DbSupport<T> implements DbInput
     @Override
     public Batch<T> readInBatch(int batchSize) throws EtlException {
 
-        JdbcSqlParamObject sqlParamObject = DatabaseUtils.buildSqlParamObject(accessor.getSql());
+        JdbcSqlParamObject sqlParamObject = DatabaseUtils.buildSqlParamObject(accessor.getSql(null));
         try {
             String sql = sqlParamObject.getJdbcSql();
             PreparedStatement statement = connection.prepareStatement(sql);

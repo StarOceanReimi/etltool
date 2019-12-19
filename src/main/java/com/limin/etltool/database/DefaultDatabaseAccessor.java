@@ -24,6 +24,11 @@ public class DefaultDatabaseAccessor implements DatabaseAccessor {
         this.sql = sql;
     }
 
+    @Override
+    public String getSql(Object bean) {
+        return sql;
+    }
+
     public DefaultDatabaseAccessor param(String name, Object value) {
         if(value == null) {
             if(params.containsKey(name)) params.remove(name);
