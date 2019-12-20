@@ -1,6 +1,7 @@
 package com.limin.etltool.step;
 
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import com.limin.etltool.core.EtlException;
 import com.limin.etltool.core.Transformer;
 import com.limin.etltool.database.*;
@@ -14,7 +15,11 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Supplier;
+
+import static java.util.Optional.ofNullable;
 
 /**
  * @author 邱理
@@ -26,10 +31,19 @@ public class ColumnMapping<T1, T2> implements Transformer<T1, T2> {
 
     private Map<String, String> columnMapping = Maps.newHashMap();
 
+    private Set<String> extraColumnNames = Sets.newHashSet();
+
     private final Supplier<T2> outputBeanSupplier;
+
+    private boolean retainUnmapped = true;
 
     public ColumnMapping() {
         this(null);
+    }
+
+    public ColumnMapping<T1, T2> retainUnmapped(boolean retainUnmapped) {
+        this.retainUnmapped = retainUnmapped;
+        return this;
     }
 
     @SuppressWarnings("unchecked")
@@ -40,15 +54,22 @@ public class ColumnMapping<T1, T2> implements Transformer<T1, T2> {
             this.outputBeanSupplier = outputBeanSupplier;
     }
 
+    public ColumnMapping<T1, T2> addColumnForMapBean(String extraColumn) {
+        extraColumnNames.add(extraColumn);
+        return this;
+    }
+
     public ColumnMapping<T1, T2> addMapping(String inputColumn, String outputColumn) {
         columnMapping.put(inputColumn, outputColumn);
         return this;
     }
 
+    @SuppressWarnings("unchecked")
     private void setValueForTarget(Object target, String name, Object value) {
         if(target instanceof Map) {
             Map<String, Object> outputMap = (Map<String, Object>) target;
             outputMap.put(name, value);
+            extraColumnNames.forEach(c -> outputMap.put(c, null));
         } else {
             try {
                 PropertyUtils.setProperty(target, name, value);
@@ -64,7 +85,8 @@ public class ColumnMapping<T1, T2> implements Transformer<T1, T2> {
         if(data instanceof Map) {
             Map<String, Object> inputMap = (Map<String, Object>) data;
             for(String input : inputMap.keySet()) {
-                String output = columnMapping.get(input);
+                String output = ofNullable(columnMapping.get(input)).orElse(retainUnmapped ? input : null);
+                if(output == null) continue;
                 Object value = inputMap.get(input);
                 setValueForTarget(target, output, value);
             }
@@ -73,7 +95,8 @@ public class ColumnMapping<T1, T2> implements Transformer<T1, T2> {
             for(PropertyDescriptor desc : descs) {
                 String input = desc.getDisplayName();
                 if("class".equals(input)) continue;
-                String output = columnMapping.get(input);
+                String output = ofNullable(columnMapping.get(input)).orElse(retainUnmapped ? input : null);
+                if(output == null) continue;
                 Object value;
                 try {
                     Method method = desc.getReadMethod();
@@ -92,11 +115,20 @@ public class ColumnMapping<T1, T2> implements Transformer<T1, T2> {
     public static void main(String[] args) throws EtlException {
         DatabaseConfiguration configuration = new DatabaseConfiguration();
         Database database = new DefaultMySqlDatabase(configuration);
-        DatabaseAccessor accessor = new TableColumnAccessor("co_comment");
-        DbInput input = new NormalDbInput<Map<String, Object>>(database, accessor) {};
-        val collection = input.readCollection();
-        collection.forEach(System.out::println);
+        DatabaseAccessor accessor = new TableColumnAccessor("co_comment").column("id", "body");
+        val input = new NormalDbInput<Map<String, Object>>(database, accessor) {};
 
+        val collection = input.readCollection();
+        ColumnMapping<Map<String, Object>, Map<String, Object>> columnMapping = new ColumnMapping<>(HashMap::new);
+        columnMapping.addMapping("id", "sid").addMapping("body", "content").addColumnForMapBean("fake");
+
+        ColumnEditing<Map<String, Object>> editor = new ColumnEditing<>();
+        editor.registerEditor("fake", (m) -> m.put("fake", ThreadLocalRandom.current().nextInt()));
+        val trans = columnMapping.andThen(editor);
+
+        collection.stream()
+                .map(trans::transform)
+                .forEach(System.out::println);
 
     }
 }
