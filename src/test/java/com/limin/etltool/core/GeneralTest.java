@@ -45,7 +45,6 @@ public class GeneralTest {
 
     @Test
     public void testListAdd() {
-
         val arrayList = new ArrayList<Integer>();
         val linkedList = new LinkedList<Integer>();
         val sw = Stopwatch.createStarted();
@@ -56,7 +55,6 @@ public class GeneralTest {
         sw.start();
         for(int i = 0; i < N; i++) linkedList.add(i);
         System.out.println(sw.elapsed().toMillis());
-
     }
 
 }

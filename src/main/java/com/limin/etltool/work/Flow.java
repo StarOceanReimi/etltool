@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
 
 /**
  * @author 邱理
- * @description
+ * @description 定义普通流转
  * @date 创建于 2019/12/19
  */
 public class Flow<I, O> implements Operation<I, O> {

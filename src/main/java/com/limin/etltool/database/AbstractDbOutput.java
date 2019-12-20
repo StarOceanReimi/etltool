@@ -10,12 +10,12 @@ import com.limin.etltool.database.util.JdbcSqlParamObject;
 import com.limin.etltool.util.Exceptions;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
-import lombok.val;
 import org.apache.commons.beanutils.ConvertUtils;
 import org.apache.commons.beanutils.Converter;
 import org.apache.commons.beanutils.PropertyUtils;
 import org.apache.commons.collections.CollectionUtils;
 
+import java.beans.PropertyDescriptor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -112,16 +112,16 @@ public abstract class AbstractDbOutput<T> extends DbSupport<T> implements DbOutp
 
     private boolean idKeyAnnoPresent(T sample) {
         if(sample instanceof Map) return false;
-        val descs = PropertyUtils.getPropertyDescriptors(sample.getClass());
-        for (val desc : descs) {
+        PropertyDescriptor[] descs = PropertyUtils.getPropertyDescriptors(sample.getClass());
+        for (PropertyDescriptor desc : descs) {
             Method read = desc.getReadMethod();
             if(read.isAnnotationPresent(IdKey.class)) {
                 idKeyMethodOrField = desc.getWriteMethod();
                 return true;
             }
         }
-        val fields = sample.getClass().getDeclaredFields();
-        for(val f : fields) {
+        Field[] fields = sample.getClass().getDeclaredFields();
+        for(Field f : fields) {
             if(f.isAnnotationPresent(IdKey.class)) {
                 idKeyMethodOrField = f;
                 return true;

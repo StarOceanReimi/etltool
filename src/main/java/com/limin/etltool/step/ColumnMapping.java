@@ -23,7 +23,7 @@ import static java.util.Optional.ofNullable;
 
 /**
  * @author 邱理
- * @description
+ * @description 流字段映射
  * @date 创建于 2019/12/19
  */
 @Slf4j
@@ -119,7 +119,7 @@ public class ColumnMapping<T1, T2> implements Transformer<T1, T2> {
         val input = new NormalDbInput<Map<String, Object>>(database, accessor) {};
 
         val collection = input.readCollection();
-        ColumnMapping<Map<String, Object>, Map<String, Object>> columnMapping = new ColumnMapping<>(HashMap::new);
+        ColumnMapping<Map<String, Object>, Map<String, Object>> columnMapping = new ColumnMapping<>();
         columnMapping.addMapping("id", "sid").addMapping("body", "content").addColumnForMapBean("fake");
 
         ColumnEditing<Map<String, Object>> editor = new ColumnEditing<>();
@@ -129,6 +129,5 @@ public class ColumnMapping<T1, T2> implements Transformer<T1, T2> {
         collection.stream()
                 .map(trans::transform)
                 .forEach(System.out::println);
-
     }
 }

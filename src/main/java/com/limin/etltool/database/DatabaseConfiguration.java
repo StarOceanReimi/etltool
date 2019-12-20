@@ -46,7 +46,25 @@ public class DatabaseConfiguration {
     private static final Yaml YAML = new Yaml();
 
     public DatabaseConfiguration() {
-        this(null);
+        this("");
+    }
+
+    private void loadFromProperties(Properties properties) {
+        val descs = PropertyUtils.getPropertyDescriptors(getClass());
+        for(val prop : descs) {
+            if(prop.getDisplayName().equals("class")) continue;
+            Object propVal = properties.get(prop.getDisplayName());
+            Method writer = prop.getWriteMethod();
+            try {
+                writer.invoke(this, propVal);
+            } catch (IllegalAccessException | InvocationTargetException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    public DatabaseConfiguration(Properties properties) {
+        loadFromProperties(properties);
     }
 
     public DatabaseConfiguration(String propertyFileLocation) {
@@ -78,17 +96,7 @@ public class DatabaseConfiguration {
         }
 
         Properties properties = YAML.loadAs(reader, Properties.class);
-        val descs = PropertyUtils.getPropertyDescriptors(getClass());
-        for(val prop : descs) {
-            if(prop.getDisplayName().equals("class")) continue;
-            Object propVal = properties.get(prop.getDisplayName());
-            Method writer = prop.getWriteMethod();
-            try {
-                writer.invoke(this, propVal);
-            } catch (IllegalAccessException | InvocationTargetException e) {
-                e.printStackTrace();
-            }
-        }
+        loadFromProperties(properties);
 
     }
 

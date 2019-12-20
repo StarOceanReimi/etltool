@@ -8,6 +8,8 @@
     <artifactId>etl-tool</artifactId>
     <version>1.0-SNAPSHOT</version>
 
+    <packaging>jar</packaging>
+
     <properties>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
@@ -23,11 +25,13 @@
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <version>4.12</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>mysql</groupId>
             <artifactId>mysql-connector-java</artifactId>
             <version>5.1.47</version>
+            <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>commons-collections</groupId>
@@ -43,6 +47,7 @@
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <version>1.18.10</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
@@ -76,15 +81,49 @@
         </dependency>
     </dependencies>
 
-    <repositories>
+    <build>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>true</filtering>
+                <excludes>
+                    <exclude>**/*.yml</exclude>
+                </excludes>
+            </resource>
+        </resources>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>3.0.0</version>
+                <configuration>
+                    <attach>true</attach>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+    <distributionManagement>
         <repository>
-            <id>aliyun</id>
-            <url>http://whrdd.f3322.net:8090/repository/maven-public/</url>
+            <id>nexus-releases</id>
+            <name>Release Repository</name>
+            <url>http://whrdd.f3322.net:8090/repository/maven-releases</url>
         </repository>
-        <repository>
-            <id>aliyun</id>
-            <url>http://maven.aliyun.com/nexus/content/groups/public</url>
-        </repository>
-    </repositories>
+        <snapshotRepository>
+            <id>nexus-snapshots</id>
+            <name>Snapshots Repository</name>
+            <url>http://whrdd.f3322.net:8090/repository/maven-snapshots</url>
+        </snapshotRepository>
+
+    </distributionManagement>
 
 </project>
