@@ -20,7 +20,9 @@ public class UnderlineCaseNameConverter implements INameConverter {
         return builder.toString();
     }
 
-    public static void main(String[] args) {
-        System.out.println(new UnderlineCaseNameConverter().rename("trans_time"));
+    @Override
+    public INameConverter getReverse() {
+        return new CamelCaseNameConverter();
     }
+
 }

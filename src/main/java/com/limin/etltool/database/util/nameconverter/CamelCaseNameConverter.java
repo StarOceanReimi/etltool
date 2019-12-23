@@ -18,4 +18,9 @@ public class CamelCaseNameConverter implements INameConverter {
         }
         return result.toString();
     }
+
+    @Override
+    public INameConverter getReverse() {
+        return new UnderlineCaseNameConverter();
+    }
 }

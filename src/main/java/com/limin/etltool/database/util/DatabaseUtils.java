@@ -46,8 +46,7 @@ public abstract class DatabaseUtils {
     private static final Pattern PARAMS_PATTERN = Pattern.compile("(:\\w+)");
 
     public static JdbcSqlParamObject buildSqlParamObject(String sqlTemplate) {
-        String template = sqlTemplate;
-        Matcher matcher = PARAMS_PATTERN.matcher(template);
+        Matcher matcher = PARAMS_PATTERN.matcher(sqlTemplate);
         List<String> paramNames = Lists.newArrayList();
         StringBuffer result = new StringBuffer();
         while (matcher.find()) {

@@ -3,7 +3,6 @@ package com.limin.etltool.database;
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import com.limin.etltool.core.Source;
 import com.limin.etltool.database.mysql.ColumnDefinitionHelper;
 import com.limin.etltool.database.util.IdKey;
@@ -20,14 +19,12 @@ import org.apache.commons.collections.CollectionUtils;
 
 import java.beans.FeatureDescriptor;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Collections.singletonList;
-import static java.util.Optional.ofNullable;
 
 /**
  * @author 邱理
@@ -113,6 +110,7 @@ public class TableColumnAccessor implements DatabaseAccessor {
         throw Exceptions.unsupported("not expected exception");
     }
 
+    @SuppressWarnings("unchecked")
     private void setColumnsWithBean(Object bean) {
         if(bean instanceof Map) {
             setColumns(Lists.newArrayList(((Map) bean).keySet()));

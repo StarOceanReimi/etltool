@@ -12,4 +12,10 @@ public class NopNameConverter implements INameConverter {
         return name;
     }
 
+    @Override
+    public INameConverter getReverse() {
+        return this;
+    }
+
+
 }

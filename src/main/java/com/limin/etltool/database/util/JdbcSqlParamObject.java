@@ -3,6 +3,8 @@ package com.limin.etltool.database.util;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.Lists;
+import com.limin.etltool.database.util.nameconverter.INameConverter;
+import com.limin.etltool.database.util.nameconverter.NameConverter;
 import com.limin.etltool.util.Beans;
 import lombok.AllArgsConstructor;
 import lombok.NonNull;
@@ -28,6 +30,7 @@ public class JdbcSqlParamObject {
     }
 
     private Cache<Class<?>, Beans.FastBeanOperation> operationCache = CacheBuilder.newBuilder().build();
+    private Cache<Class<?>, INameConverter> nameConverterCache = CacheBuilder.newBuilder().build();
 
     public Object[] buildParam(Object param) {
         List<Object> result = Lists.newArrayList();
@@ -42,7 +45,9 @@ public class JdbcSqlParamObject {
         try {
             Beans.FastBeanOperation operation =
                     operationCache.get(param.getClass(), () -> Beans.getFastBeanOperation(param.getClass()));
-            return operation.invokeGetter(param, paramName);
+            INameConverter converter = nameConverterCache.get(param.getClass(),
+                    () -> INameConverter.getReverseConverter(param.getClass()));
+            return operation.invokeGetter(param, converter.rename(paramName));
         } catch (ExecutionException e) {
             log.warn("cannot read cache of {}", param.getClass());
             return null;

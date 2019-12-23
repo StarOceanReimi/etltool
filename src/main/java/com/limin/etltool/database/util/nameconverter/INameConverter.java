@@ -21,5 +21,11 @@ public interface INameConverter {
         }
     }
 
+    static INameConverter getReverseConverter(Class<?> converterClass) {
+        return getConverter(converterClass).getReverse();
+    }
+
     String rename(String name);
+
+    INameConverter getReverse();
 }

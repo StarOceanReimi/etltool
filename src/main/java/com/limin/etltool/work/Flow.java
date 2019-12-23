@@ -1,14 +1,18 @@
 package com.limin.etltool.work;
 
 import com.google.common.base.Stopwatch;
+import com.google.common.collect.Maps;
 import com.limin.etltool.core.*;
 import com.limin.etltool.database.*;
 import com.limin.etltool.database.mysql.DefaultMySqlDatabase;
 import com.limin.etltool.step.ColumnEditing;
 import com.limin.etltool.step.ColumnMapping;
+import com.limin.etltool.step.GroupByField;
+import com.limin.etltool.step.GroupByFieldReducer;
 import lombok.val;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -37,7 +41,7 @@ public class Flow<I, O> implements Operation<I, O> {
         }
     }
 
-    public static void main(String[] args) throws Exception {
+    private void moveStudyRecordTest() throws EtlException {
 
         String sql = "select id, user_id, unit_id, content_id, start_time, end_time, dif_time study_time from edu_learn_note";
         DatabaseConfiguration inputConfig = new DatabaseConfiguration("classpath:database.yml");
@@ -61,5 +65,15 @@ public class Flow<I, O> implements Operation<I, O> {
         val sw = Stopwatch.createStarted();
         flow.processInBatch(4096, input, mapping.andThen(editor), output);
         System.out.println(sw.stop());
+
+    }
+
+
+
+    public static void main(String[] args) throws Exception {
+
+        GroupByField<Map<String, Object>> groupField = new GroupByField<>("category");
+
+
     }
 }
