@@ -23,12 +23,15 @@ import static com.google.common.base.Preconditions.checkNotNull;
  */
 public class GroupByOperationMapping<E, O> extends GroupByFieldReducer<E, O> {
 
-    private Map<String, Collector> mapping;
+    private final Map<String, Collector> mapping;
+
+    private final Map<String, String> statNameMapping;
 
     private Supplier<?> nullValueHandler;
 
     public GroupByOperationMapping() {
         mapping = Maps.newHashMap();
+        statNameMapping = Maps.newHashMap();
     }
 
     public GroupByOperationMapping nullValueHandler(Supplier<?> defaultHandler) {
@@ -36,10 +39,12 @@ public class GroupByOperationMapping<E, O> extends GroupByFieldReducer<E, O> {
         return this;
     }
 
-    public GroupByOperationMapping addMapping(String fieldName, Collector<E, ?, ?> reducer) {
+    public GroupByOperationMapping addMapping(String fieldName, String statName, Collector<E, ?, ?> reducer) {
         checkArgument(!Strings.isNullOrEmpty(fieldName), "fieldName cannot be empty");
+        checkArgument(!Strings.isNullOrEmpty(statName), "statName cannot be empty");
         checkNotNull(reducer, "reducer cannot be null");
         mapping.put(fieldName, reducer);
+        statNameMapping.put(fieldName, statName);
         return this;
     }
 
@@ -63,7 +68,7 @@ public class GroupByOperationMapping<E, O> extends GroupByFieldReducer<E, O> {
             if(nullValueHandler == null) stream = stream.filter(Objects::nonNull);
             else stream = stream.map(v -> Objects.isNull(v) ? nullValueHandler.get() : v);
             Object groupedValue = stream.collect(mapping.get(key));
-            groupedResult.put(key, groupedValue);
+            groupedResult.put(statNameMapping.get(key), groupedValue);
         }
         if(out instanceof Map) ((Map) out).putAll(groupedResult);
         else setPropertiesFromMap(out, groupedResult, op);

@@ -4,10 +4,11 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.limin.etltool.core.Transformer;
 import com.limin.etltool.util.Beans;
-import org.apache.commons.beanutils.PropertyUtils;
 
-import java.lang.reflect.InvocationTargetException;
-import java.util.*;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.function.Supplier;
 
 /**
@@ -29,9 +30,8 @@ public abstract class GroupByFieldReducer<E, O>
     @SuppressWarnings("unchecked")
     @Override
     public Collection<O> transform(Map<Map<String, Object>, List<E>> data) {
+        if(data.isEmpty()) return Collections.emptyList();
         Collection<O> result = Lists.newArrayList();
-        if(result.isEmpty()) return Collections.emptyList();
-
         O sampleData = getOutSupplier().get();
         Beans.FastBeanOperation op = loadOperation(sampleData);
 

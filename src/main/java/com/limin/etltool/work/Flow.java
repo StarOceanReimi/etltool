@@ -1,21 +1,16 @@
 package com.limin.etltool.work;
 
 import com.google.common.base.Stopwatch;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.limin.etltool.core.*;
 import com.limin.etltool.database.*;
 import com.limin.etltool.database.mysql.DefaultMySqlDatabase;
-import com.limin.etltool.step.ColumnEditing;
-import com.limin.etltool.step.ColumnMapping;
-import com.limin.etltool.step.GroupByField;
-import com.limin.etltool.step.GroupByFieldReducer;
+import com.limin.etltool.step.*;
 import lombok.val;
 
 import java.time.LocalDateTime;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -72,8 +67,22 @@ public class Flow<I, O> implements Operation<I, O> {
 
     public static void main(String[] args) throws Exception {
 
-        GroupByField<Map<String, Object>> groupField = new GroupByField<>("category");
+        DatabaseConfiguration configuration = new DatabaseConfiguration("classpath:database.yml");
+        Database database = new DefaultMySqlDatabase(configuration.databaseName("dangjian"));
+        DatabaseAccessor accessor = new TableColumnAccessor("fact_party_org").column("id", "category");
+        DbInput<Map<String, Object>> input = new NormalDbInput<Map<String, Object>>(database, accessor) {};
 
+        GroupByFieldWithCondition<Map<String, Object>> conditionedGroup = new GroupByFieldWithCondition<>();
+        List<Long> dwList  = Arrays.asList(10000141L, 10000142L);
+        conditionedGroup.addMapping("category", "dw", (m) -> dwList.contains(m.get("category")));
+
+        GroupByOperationMapping<Map<String, Object>, Map<String, Object>> mapping =
+                new GroupByOperationMapping<>()
+                        .nullValueHandler(() -> 0L)
+                        .addMapping("category", "count", Collectors.counting());
+
+        conditionedGroup.andThen(mapping).transform(input.readCollection())
+                .forEach(System.out::println);
 
     }
 }
