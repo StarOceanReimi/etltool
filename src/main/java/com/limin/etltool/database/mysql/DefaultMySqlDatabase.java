@@ -5,19 +5,16 @@ import com.limin.etltool.database.Database;
 import com.limin.etltool.database.DatabaseConfiguration;
 import com.limin.etltool.util.TemplateUtils;
 import lombok.extern.slf4j.Slf4j;
-import lombok.val;
 import org.apache.commons.collections.MapUtils;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import static com.limin.etltool.database.mysql.ColumnDefinition.*;
 import static com.limin.etltool.util.Exceptions.propagate;
 import static com.limin.etltool.util.Exceptions.rethrow;
 import static com.limin.etltool.util.QueryStringUtils.toQueryString;
@@ -92,6 +89,11 @@ public class DefaultMySqlDatabase implements Database {
             }
         }
         return result;
+    }
+
+    @Override
+    public void optimizeForBatchWriting() {
+        getConfiguration().attribute("rewriteBatchedStatements", true);
     }
 
     @Override

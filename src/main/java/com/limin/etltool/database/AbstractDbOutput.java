@@ -59,8 +59,12 @@ public abstract class AbstractDbOutput<T> extends DbSupport<T> implements DbOutp
 
     @Override
     protected void initializeConnection(Database database) {
-        database.getConfiguration().attribute("rewriteBatchedStatements", true);
+        database.optimizeForBatchWriting();
         super.initializeConnection(database);
+    }
+
+    public void setBatchSize(int batchSize) {
+        this.batchSize = batchSize;
     }
 
     @Override

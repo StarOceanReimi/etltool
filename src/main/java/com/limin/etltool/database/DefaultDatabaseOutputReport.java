@@ -2,6 +2,8 @@ package com.limin.etltool.database;
 
 import com.limin.etltool.core.OutputReport;
 
+import java.sql.SQLException;
+
 public class DefaultDatabaseOutputReport implements OutputReport {
     @Override
     public void logSuccessResult(Object result) {
@@ -10,6 +12,10 @@ public class DefaultDatabaseOutputReport implements OutputReport {
 
     @Override
     public void logErrorResult(Object result) {
+
+        if(result instanceof SQLException) {
+            ((SQLException) result).printStackTrace();
+        }
 
     }
 

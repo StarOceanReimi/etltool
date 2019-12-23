@@ -2,17 +2,14 @@ package com.limin.etltool.step;
 
 import com.google.common.collect.Maps;
 import com.limin.etltool.core.Transformer;
+import com.limin.etltool.util.Beans;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.beanutils.PropertyUtils;
 
 import java.beans.PropertyDescriptor;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
-
-import static java.util.Optional.ofNullable;
 
 /**
  * @author 邱理
@@ -20,7 +17,7 @@ import static java.util.Optional.ofNullable;
  * @date 创建于 2019/12/19
  */
 @Slf4j
-public class ColumnEditing<I> implements Transformer<I, I> {
+public class ColumnEditing<I> extends CachedBeanOperationTransform<I, I> implements Transformer<I, I> {
 
     private Map<String, Consumer<I>> columnEditorMemo = Maps.newHashMap();
 
@@ -39,18 +36,14 @@ public class ColumnEditing<I> implements Transformer<I, I> {
                 if(editor != null) editor.accept(data);
             }
         } else {
+            Beans.FastBeanOperation dataOp = loadOperation(data);
             PropertyDescriptor[] descriptors = PropertyUtils.getPropertyDescriptors(data.getClass());
             for (PropertyDescriptor descriptor : descriptors) {
                 String propertyName = descriptor.getDisplayName();
-                Method method = descriptor.getReadMethod();
                 Consumer<I> editor = columnEditorMemo.get(propertyName);
-                try {
-                    if (editor != null) {
-                        I value = (I) method.invoke(data);
-                        editor.accept(value);
-                    }
-                } catch (IllegalAccessException | InvocationTargetException e) {
-                    log.warn("cannot invoker get property from bean: {}", data);
+                if (editor != null) {
+                    I value = (I) dataOp.invokeGetter(data, propertyName);
+                    editor.accept(value);
                 }
             }
 

@@ -1,9 +1,6 @@
-url: jdbc:mysql://192.168.137.55:3306/user_center
+url: jdbc:mysql://192.168.137.57:3306/leadership_transition
 username: dangjian
 password: uNdvlOK5vMkqU6Xx15vtmEDdxzniQiuE
-#url: jdbc:mysql://localhost:3306/hierarchical_data_exec
-#username: root
-#password: db0723..
 driverClassName: com.mysql.jdbc.Driver
 attributes:
   serverTimezone: Asia/Shanghai

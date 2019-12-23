@@ -18,5 +18,7 @@ public interface Database {
 
     boolean executeSQL(String ddl);
 
+    void optimizeForBatchWriting();
+
     DatabaseConfiguration getConfiguration();
 }

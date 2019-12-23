@@ -1,16 +1,17 @@
 package com.limin.etltool.work;
 
-import com.baomidou.mybatisplus.core.toolkit.IdWorker;
+import com.google.common.base.Stopwatch;
 import com.limin.etltool.core.*;
 import com.limin.etltool.database.*;
 import com.limin.etltool.database.mysql.DefaultMySqlDatabase;
 import com.limin.etltool.step.ColumnEditing;
+import com.limin.etltool.step.ColumnMapping;
+import lombok.val;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.UUID;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 /**
@@ -36,29 +37,29 @@ public class Flow<I, O> implements Operation<I, O> {
         }
     }
 
-    public static void main(String[] args) throws EtlException {
+    public static void main(String[] args) throws Exception {
 
-        String sql = "SELECT 1 id, gau.area_id, gau.user_id, gau.is_party_leader, gau.is_party_first, gau.is_people_leader, gau.is_people_first, u.sex, ud.politics_status, ud.birthday, ud.education, TIMESTAMPDIFF(YEAR, ud.birthday, CURDATE()) as age FROM ( SELECT au.area_id, au.user_id, max(au.is_party_leader) AS is_party_leader, max(au.is_party_first) AS is_party_first, max(au.is_people_leader) AS is_people_leader, max(au.is_people_first) AS is_people_first FROM ( SELECT area.area_id, p.unit_id AS fact_unit_id, partyup.user_id, 1 AS is_party_leader, CASE WHEN p.unit_id = area.party_unit_id AND partyp.post_sequence IN (100051, 100059, 100062) THEN 1 ELSE 0 END is_party_first, 0 AS is_people_leader, 0 AS is_people_first FROM ( SELECT ad.id area_id, partyUnit.id party_unit_id, p.permission_id FROM uc_info_area_detail ad INNER JOIN uc_info_area a ON a.id = ad.id INNER JOIN uc_unit partyUnit ON ad.unit_id = partyUnit.id AND partyUnit.is_deleted = 0 INNER JOIN common_query.uc_permission p ON partyUnit.id = p.unit_id WHERE a.`level` = 5 ) area INNER JOIN common_query.uc_permission p ON p.permission_id LIKE CONCAT(area.permission_id, '%') INNER JOIN uc_post partyp ON partyp.unit_id = p.unit_id AND partyp.post_sequence IS NOT NULL AND partyp.post_sequence <= 100069 AND partyp.is_deleted = 0 INNER JOIN uc_user_post partyup ON partyup.post_id = partyp.id and partyup.start_time <= NOW() and NOW() <= partyup.end_time and partyup.is_deleted = 0 UNION ALL SELECT peopleUnit.area_id, peopleUnit.id AS fact_unit_id, peopleup.user_id, 0 AS is_party_leader, 0 AS is_party_first, 1 AS is_people_leader, CASE WHEN peoplep.post_sequence = 10200502 THEN 1 ELSE 0 END is_people_first FROM uc_unit_people peopleUnit INNER JOIN uc_info_area a ON a.id = peopleUnit.area_id INNER JOIN uc_post peoplep ON peoplep.unit_id = peopleUnit.id AND peoplep.post_sequence IS NOT NULL AND peoplep.is_deleted = 0 INNER JOIN uc_user_post peopleup ON peopleup.post_id = peoplep.id and peopleup.start_time <= NOW() and NOW() <= peopleup.end_time and peopleup.is_deleted = 0 WHERE a.`level` = 5 ) au GROUP BY area_id, user_id ) gau INNER JOIN uc_user u ON u.gau.user_id = u.id AND u.is_deleted = 0 INNER JOIN uc_user_detail ud ON ud.id = u.id";
-        //定义流转
-        Flow<Map<String, Object>, Map<String, Object>> flow = new Flow<>();
+        String sql = "select id, user_id, unit_id, content_id, start_time, end_time, dif_time study_time from edu_learn_note";
+        DatabaseConfiguration inputConfig = new DatabaseConfiguration("classpath:database.yml");
+        DefaultMySqlDatabase inputDatabase = new DefaultMySqlDatabase(inputConfig.databaseName("edu_online"));
+        DatabaseAccessor inputAccessor = new DefaultDatabaseAccessor(sql);
 
-        //定义输入
-        DefaultMySqlDatabase inputDatabase = new DefaultMySqlDatabase(new DatabaseConfiguration("classpath:database.yml"));
-        DatabaseAccessor databaseAccessor = new DefaultDatabaseAccessor(sql);
-        BatchInput input = new NormalDbInput(inputDatabase, databaseAccessor) {};
+        NormalDbInput<Map<String, Object>> input = new NormalDbInput<Map<String, Object>>(inputDatabase, inputAccessor) {};
 
-        //定义转换
-        Consumer<Map<String, Object>> idSetter = (m) -> m.put("id", IdWorker.getId());
-        ColumnEditing<Map<String, Object>> editingService = new ColumnEditing<>();
-        editingService.registerEditor("id", idSetter);
-
-        //定义输出
-        DefaultMySqlDatabase outputDatabase = new DefaultMySqlDatabase(new DatabaseConfiguration("classpath:database1.yml"));
-        DatabaseAccessor outputAccessor = new TableColumnAccessor(TableColumnAccessor.SqlType.INSERT, "fact_village_cadre");
-        NormalDbOutput output = new NormalDbOutput(outputDatabase, outputAccessor) {};
+        DatabaseConfiguration outputConfig = new DatabaseConfiguration("classpath:database1.yml");
+        DefaultMySqlDatabase outputDatabase = new DefaultMySqlDatabase(outputConfig);
+        DatabaseAccessor outputAccessor = new TableColumnAccessor(TableColumnAccessor.SqlType.INSERT, "fact_study_record_test");
+        NormalDbOutput<Map<String, Object>> output = new NormalDbOutput<Map<String, Object>>(outputDatabase, outputAccessor) {};
         output.setCreateTableIfNotExists(true);
 
-        //执行
-        flow.processInBatch(1024, input, editingService, output);
+        ColumnMapping mapping = new ColumnMapping();
+        mapping.addColumnForMapBean("ts");
+        ColumnEditing<Map<String, Object>> editor = new ColumnEditing<>();
+        editor.registerEditor("ts", (m)->m.put("ts", LocalDateTime.now()));
+
+        val flow = new Flow<Map<String, Object>, Map<String, Object>>();
+        val sw = Stopwatch.createStarted();
+        flow.processInBatch(4096, input, mapping.andThen(editor), output);
+        System.out.println(sw.stop());
     }
 }

@@ -1,6 +1,7 @@
 package com.limin.etltool.database;
 
 import com.google.common.base.Charsets;
+import com.google.common.base.Strings;
 import com.google.common.collect.Maps;
 import lombok.Data;
 import lombok.val;
@@ -17,6 +18,8 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.Map;
 import java.util.Properties;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.limin.etltool.util.Exceptions.propagate;
@@ -100,10 +103,41 @@ public class DatabaseConfiguration {
 
     }
 
+    private static final Pattern DB_URL_PATTERN = Pattern.compile(
+            "^(?<protocal>.*)://(?<host>.*):(?<port>.*)/(?<database>[^?]*)\\??(?<attributes>.*)?");
+
+    private String databaseName;
+
+    public void setUrl(String url) {
+        this.url = url;
+        Matcher matcher = DB_URL_PATTERN.matcher(url);
+        if(matcher.find())
+            databaseName = matcher.group("database");
+    }
+
+    public void setDatabaseName(String databaseName) {
+        databaseName(databaseName);
+    }
+
+    public DatabaseConfiguration databaseName(String dbName) {
+        databaseName = dbName;
+        if(Strings.isNullOrEmpty(url)) return this;
+        Matcher matcher = DB_URL_PATTERN.matcher(url);
+        if(matcher.find())
+            url = replace(url, dbName, matcher, "database");
+        return this;
+    }
+
     public DatabaseConfiguration attribute(String name, Object value) {
         attributes.put(name, value);
         return this;
     }
 
-
+    private static String replace(String ori, String replacement, Matcher matcher, String groupName) {
+        StringBuilder builder = new StringBuilder();
+        builder.append(ori, 0, matcher.start(groupName));
+        builder.append(replacement);
+        builder.append(ori.substring(matcher.end(groupName)));
+        return builder.toString();
+    }
 }

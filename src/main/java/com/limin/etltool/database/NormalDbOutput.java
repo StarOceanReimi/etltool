@@ -20,15 +20,21 @@ import net.sf.jsqlparser.statement.delete.Delete;
 import net.sf.jsqlparser.statement.insert.Insert;
 import net.sf.jsqlparser.statement.update.Update;
 import org.apache.commons.collections.CollectionUtils;
+import org.apache.ibatis.annotations.Results;
 
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkState;
 import static com.limin.etltool.database.mysql.ColumnDefinition.INT;
 import static com.limin.etltool.database.mysql.ColumnDefinition.VARCHAR;
 import static com.limin.etltool.util.Exceptions.rethrow;
@@ -51,8 +57,14 @@ public class NormalDbOutput<T> extends AbstractDbOutput<T> {
 
     private boolean createTableIfNotExists = false;
 
+    private boolean truncateTableBeforeInsert = false;
+
     public void setCreateTableIfNotExists(boolean createTableIfNotExists) {
         this.createTableIfNotExists = createTableIfNotExists;
+    }
+
+    public void setTruncateTableBeforeInsert(boolean truncateTableBeforeInsert) {
+        this.truncateTableBeforeInsert = truncateTableBeforeInsert;
     }
 
     @Override
@@ -61,8 +73,21 @@ public class NormalDbOutput<T> extends AbstractDbOutput<T> {
         if(createTableIfNotExists) {
             T data = dataCollection.stream().findAny().get();
             tryCreateTable(data);
+        } else if(truncateTableBeforeInsert) {
+            T data = dataCollection.stream().findAny().get();
+            tryTruncateTable(data);
         }
         return super.writeCollection(dataCollection);
+    }
+
+    private void tryTruncateTable(T data) {
+        String tableName = findTableName(data);
+        if(checkTableExists(tableName)) {
+            truncateTable(tableName);
+        } else {
+            throw Exceptions.inform("cannot truncate table that not existing." +
+                    " please turn on createTableIfNotExists when table is not existing.");
+        }
     }
 
     private String findTableName(T data) {
@@ -119,17 +144,27 @@ public class NormalDbOutput<T> extends AbstractDbOutput<T> {
         }
     }
 
-    private boolean checkTableExists(String tableName) {
+    private interface StatementHandler<T> {
+        T doWithStatement(java.sql.Statement statement) throws SQLException;
+    }
+
+    private interface ResultSetStatementHandler extends StatementHandler<ResultSet> { }
+
+    private interface IntegerStatementHandler extends StatementHandler<Integer> { }
+
+    private <T> T executeStatement(StatementHandler<T> call, Consumer<SQLException> statementErrorHandler) {
+
         java.sql.Statement statement = null;
         try {
             statement = connection.createStatement();
         } catch (SQLException e) {
             rethrow(e);
         }
+        T result = null;
         try {
-            statement.executeQuery(logFormat("SELECT 1 FROM {}", tableName));
+            result = call.doWithStatement(statement);
         } catch (SQLException e) {
-            return false;
+            statementErrorHandler.accept(e);
         } finally {
             try {
                 statement.close();
@@ -137,7 +172,27 @@ public class NormalDbOutput<T> extends AbstractDbOutput<T> {
                 rethrow(e);
             }
         }
-        return true;
+        return result;
+    }
+
+    private boolean truncateTable(final String tableName) {
+        AtomicBoolean flag = new AtomicBoolean();
+        executeStatement((IntegerStatementHandler) statement -> {
+            boolean result = statement.execute(logFormat("TRUNCATE TABLE {}", tableName));
+            flag.set(result);
+            return 0;
+        }, (e) -> flag.set(false));
+        return flag.get();
+    }
+
+    private boolean checkTableExists(final String tableName) {
+        AtomicBoolean flag = new AtomicBoolean();
+        executeStatement((ResultSetStatementHandler) statement -> {
+            ResultSet set = statement.executeQuery(logFormat("SELECT 1 FROM {}", tableName));
+            flag.set(true);
+            return set;
+        }, (e) -> flag.set(false));
+        return flag.get();
     }
 
     @Data
@@ -156,21 +211,8 @@ public class NormalDbOutput<T> extends AbstractDbOutput<T> {
 
         DatabaseConfiguration configuration = new DatabaseConfiguration();
         DefaultMySqlDatabase database = new DefaultMySqlDatabase(configuration);
-        database.createTable("my_test", null, Arrays.asList(
-                ColumnDefinition.builder().name("id").type(INT(10)).primaryKey(true).autoIncrement(true).build(),
-                ColumnDefinition.builder().name("name").type(VARCHAR(255)).build()));
 
-        DatabaseAccessor accessor = new TableColumnAccessor(TableColumnAccessor.SqlType.INSERT, "my_test")
-                .column("name");
-        NormalDbOutput<TestBean> output = new NormalDbOutput<TestBean>(database, accessor) {};
-        List<TestBean> mapList = Lists.newArrayList();
-        for(int i=0; i<100; i++) {
-            mapList.add(new TestBean(null, "QL_" + String.format("%02d", i)));
-        }
-        val sw = Stopwatch.createStarted();
-        output.writeCollection(mapList);
-        System.out.println(mapList.get(5).getId());
-        System.out.println(sw.stop());
+
 
     }
 }

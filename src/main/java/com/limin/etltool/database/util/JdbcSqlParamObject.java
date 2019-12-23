@@ -1,26 +1,33 @@
 package com.limin.etltool.database.util;
 
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.Lists;
+import com.limin.etltool.util.Beans;
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.NonNull;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.beanutils.PropertyUtils;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 
-@AllArgsConstructor
+@RequiredArgsConstructor
 @Slf4j
 public class JdbcSqlParamObject {
 
-    private String jdbcSql;
+    private final String jdbcSql;
 
-    private String[] paramNames;
+    private final String[] paramNames;
 
     public String getJdbcSql() {
         return jdbcSql;
     }
+
+    private Cache<Class<?>, Beans.FastBeanOperation> operationCache = CacheBuilder.newBuilder().build();
 
     public Object[] buildParam(Object param) {
         List<Object> result = Lists.newArrayList();
@@ -31,11 +38,13 @@ public class JdbcSqlParamObject {
     }
 
     private Object getVal(String paramName, Object param) {
-        if(param instanceof Map) return ((Map) param).get(paramName);
+        if (param instanceof Map) return ((Map) param).get(paramName);
         try {
-            return PropertyUtils.getProperty(param, paramName);
-        } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
-            log.warn("cannot fetch property[{}] of class {}", paramName, param.getClass());
+            Beans.FastBeanOperation operation =
+                    operationCache.get(param.getClass(), () -> Beans.getFastBeanOperation(param.getClass()));
+            return operation.invokeGetter(param, paramName);
+        } catch (ExecutionException e) {
+            log.warn("cannot read cache of {}", param.getClass());
             return null;
         }
     }

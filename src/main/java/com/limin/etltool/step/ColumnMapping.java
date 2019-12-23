@@ -6,6 +6,7 @@ import com.limin.etltool.core.EtlException;
 import com.limin.etltool.core.Transformer;
 import com.limin.etltool.database.*;
 import com.limin.etltool.database.mysql.DefaultMySqlDatabase;
+import com.limin.etltool.util.Beans;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.beanutils.PropertyUtils;
@@ -27,7 +28,7 @@ import static java.util.Optional.ofNullable;
  * @date 创建于 2019/12/19
  */
 @Slf4j
-public class ColumnMapping<T1, T2> implements Transformer<T1, T2> {
+public class ColumnMapping<T1, T2> extends CachedBeanOperationTransform<T1, T2> implements Transformer<T1, T2> {
 
     private Map<String, String> columnMapping = Maps.newHashMap();
 
@@ -71,11 +72,8 @@ public class ColumnMapping<T1, T2> implements Transformer<T1, T2> {
             outputMap.put(name, value);
             extraColumnNames.forEach(c -> outputMap.put(c, null));
         } else {
-            try {
-                PropertyUtils.setProperty(target, name, value);
-            } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
-                log.warn("can not set property {} for {}", name, target);
-            }
+            Beans.FastBeanOperation targetOp = loadOperation(target);
+            targetOp.invokeSetter(target, name, value);
         }
     }
 
@@ -92,20 +90,13 @@ public class ColumnMapping<T1, T2> implements Transformer<T1, T2> {
             }
         } else {
             PropertyDescriptor[] descs = PropertyUtils.getPropertyDescriptors(data.getClass());
+            Beans.FastBeanOperation dataOp = loadOperation(data);
             for(PropertyDescriptor desc : descs) {
                 String input = desc.getDisplayName();
                 if("class".equals(input)) continue;
                 String output = ofNullable(columnMapping.get(input)).orElse(retainUnmapped ? input : null);
                 if(output == null) continue;
-                Object value;
-                try {
-                    Method method = desc.getReadMethod();
-                    method.setAccessible(true);
-                    value = method.invoke(data);
-                } catch (IllegalAccessException | InvocationTargetException e) {
-                    log.warn("can not read property {} from {}", input, data);
-                    continue;
-                }
+                Object value = dataOp.invokeGetter(data, input);
                 setValueForTarget(target, output, value);
             }
         }
