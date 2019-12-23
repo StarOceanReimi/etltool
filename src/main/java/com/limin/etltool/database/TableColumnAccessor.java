@@ -8,6 +8,7 @@ import com.limin.etltool.core.Source;
 import com.limin.etltool.database.mysql.ColumnDefinitionHelper;
 import com.limin.etltool.database.util.IdKey;
 import com.limin.etltool.database.util.SqlBuilder;
+import com.limin.etltool.database.util.nameconverter.INameConverter;
 import com.limin.etltool.util.Exceptions;
 import com.limin.etltool.util.ReflectionUtils;
 import com.limin.etltool.util.TemplateUtils;
@@ -116,9 +117,11 @@ public class TableColumnAccessor implements DatabaseAccessor {
         if(bean instanceof Map) {
             setColumns(Lists.newArrayList(((Map) bean).keySet()));
         } else {
+            INameConverter converter = INameConverter.getConverter(bean.getClass());
             List<String> names = Arrays.stream(PropertyUtils.getPropertyDescriptors(bean.getClass()))
                     .map(FeatureDescriptor::getDisplayName)
                     .filter(name -> !"class".equals(name))
+                    .map(converter::rename)
                     .collect(Collectors.toList());
             setColumns(names);
         }
