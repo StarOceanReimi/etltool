@@ -1,5 +1,6 @@
 package com.limin.etltool.step;
 
+import com.google.common.base.Strings;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.limin.etltool.core.EtlException;
@@ -118,7 +119,10 @@ public class ColumnMapping<T1, T2> extends CachedBeanOperationTransform<Stream<T
         GroupByField<Map<String, Object>> byField = new GroupByField<>("content");
 
         GroupByOperationMapping<Map<String, Object>, Map<String, Object>> groupByOperationMapping =
-                new GroupByOperationMapping<>().addMapping("content", "count", Collectors.counting());
+                new GroupByOperationMapping<>()
+                        .addMapping("content", "count", Collectors.counting())
+                        .addMapping("content", "sumLength",
+                                Collectors.summingLong((String content) -> Strings.isNullOrEmpty(content) ? 0 : content.length())) ;
 
         columnMapping.andThen(editor).andThen(byField).andThen(groupByOperationMapping)
                 .transform(collection.stream()).forEach(System.out::println);
