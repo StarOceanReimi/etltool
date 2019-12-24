@@ -22,9 +22,9 @@ public class GroupByFieldWithCondition<E>
         extends CachedBeanOperationTransform<Stream<E>, Map<Map<String, Object>, List<E>>>
         implements Reducer<E, Stream<E>, Map<Map<String, Object>, List<E>>> {
 
-    private Map<String, Predicate<E>> predicateMap;
+    private Map<String, List<Predicate<E>>> predicateMap;
 
-    private Map<String, String> fieldKeyMap;
+    private Map<String, List<String>> fieldKeyMap;
 
     private String otherGroupName = "__other__";
 
@@ -42,8 +42,10 @@ public class GroupByFieldWithCondition<E>
         checkArgument(!Strings.isNullOrEmpty(fieldName), "fieldName cannot be empty");
         checkArgument(!Strings.isNullOrEmpty(statName), "statName cannot be empty");
         checkNotNull(predicate, "reducer cannot be null");
-        predicateMap.put(fieldName, predicate);
-        fieldKeyMap.put(fieldName, statName);
+        predicateMap.putIfAbsent(fieldName, Lists.newArrayList());
+        predicateMap.get(fieldName).add(predicate);
+        fieldKeyMap.putIfAbsent(fieldName, Lists.newArrayList());
+        fieldKeyMap.get(fieldName).add(statName);
         return this;
     }
 
@@ -57,11 +59,13 @@ public class GroupByFieldWithCondition<E>
 
     private Map<String, Object> extractKeyFrom(E data) {
         Map<String, Object> key = Maps.newHashMap();
-        fieldKeyMap.forEach((name, statName) -> {
-            if(predicateMap.get(name).test(data))
-                key.put(name, statName);
-            else
-                key.put(name, otherGroupName);
+        fieldKeyMap.forEach((name, statNames) -> {
+            for(int i = 0; i<statNames.size(); i++) {
+                if(predicateMap.get(name).get(i).test(data))
+                    key.put(name, statNames.get(i));
+            }
+            if(!key.containsKey(name))
+                key.putIfAbsent(name, otherGroupName);
         });
         return key;
     }

@@ -31,18 +31,17 @@ public abstract class GroupByFieldReducer<E, O>
     @Override
     public Stream<O> transform(Map<Map<String, Object>, List<E>> data) {
         if(data.isEmpty()) return Stream.empty();
-        Collection<O> result = Lists.newArrayList();
+        Stream.Builder<O> streams = Stream.builder();
         O sampleData = getOutSupplier().get();
         Beans.FastBeanOperation op = loadOperation(sampleData);
-
         data.forEach((key, value) -> {
             O out = getOutSupplier().get();
             if(out instanceof Map) ((Map) out).putAll(key);
             else setPropertiesFromMap(out, key, op);
             merge(out, reduce(value));
-            result.add(out);
+            streams.add(out);
         });
-        return result.stream();
+        return streams.build();
     }
 
     @SuppressWarnings("unchecked")

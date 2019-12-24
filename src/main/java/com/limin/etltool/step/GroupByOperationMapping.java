@@ -1,6 +1,7 @@
 package com.limin.etltool.step;
 
 import com.google.common.base.Strings;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.limin.etltool.util.Beans;
 
@@ -23,9 +24,9 @@ import static com.google.common.base.Preconditions.checkNotNull;
  */
 public class GroupByOperationMapping<E, O> extends GroupByFieldReducer<E, O> {
 
-    private final Map<String, Collector> mapping;
+    private final Map<String, List<Collector>> mapping;
 
-    private final Map<String, String> statNameMapping;
+    private final Map<String, List<String>> statNameMapping;
 
     private Supplier<?> nullValueHandler;
 
@@ -43,8 +44,10 @@ public class GroupByOperationMapping<E, O> extends GroupByFieldReducer<E, O> {
         checkArgument(!Strings.isNullOrEmpty(fieldName), "fieldName cannot be empty");
         checkArgument(!Strings.isNullOrEmpty(statName), "statName cannot be empty");
         checkNotNull(reducer, "reducer cannot be null");
-        mapping.put(fieldName, reducer);
-        statNameMapping.put(fieldName, statName);
+        mapping.putIfAbsent(fieldName, Lists.newArrayList());
+        statNameMapping.putIfAbsent(fieldName, Lists.newArrayList());
+        mapping.get(fieldName).add(reducer);
+        statNameMapping.get(fieldName).add(statName);
         return this;
     }
 
@@ -64,11 +67,13 @@ public class GroupByOperationMapping<E, O> extends GroupByFieldReducer<E, O> {
         Beans.FastBeanOperation op = loadOperation(sample.get());
         Map<String, Object> groupedResult = Maps.newHashMap();
         for (String key : mapping.keySet()) {
-            Stream<Object> stream = data.stream().map(extractField(key, op));
-            if(nullValueHandler == null) stream = stream.filter(Objects::nonNull);
-            else stream = stream.map(v -> Objects.isNull(v) ? nullValueHandler.get() : v);
-            Object groupedValue = stream.collect(mapping.get(key));
-            groupedResult.put(statNameMapping.get(key), groupedValue);
+            for(int i = 0, len = mapping.get(key).size(); i < len; i++) {
+                Stream<Object> stream = data.stream().map(extractField(key, op));
+                if(nullValueHandler == null) stream = stream.filter(Objects::nonNull);
+                else stream = stream.map(v -> Objects.isNull(v) ? nullValueHandler.get() : v);
+                Object groupedValue = stream.collect(mapping.get(key).get(i));
+                groupedResult.put(statNameMapping.get(key).get(i), groupedValue);
+            }
         }
         if(out instanceof Map) ((Map) out).putAll(groupedResult);
         else setPropertiesFromMap(out, groupedResult, op);

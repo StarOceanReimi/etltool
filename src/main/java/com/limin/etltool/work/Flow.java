@@ -75,15 +75,20 @@ public class Flow<I, O> implements Operation<I, O> {
         DbInput<Map<String, Object>> input = new NormalDbInput<Map<String, Object>>(database, accessor) {};
 
         GroupByFieldWithCondition<Map<String, Object>> conditionedGroup = new GroupByFieldWithCondition<>();
-        List<Long> dwList  = Arrays.asList(10000141L, 10000142L);
-        conditionedGroup.addMapping("category", "dw", (m) -> dwList.contains(m.get("category")));
+        List<Long> dwList   = Arrays.asList(10000141L, 10000142L);
+        List<Long> dzzList  = Arrays.asList(10000143L, 10000144L);
+        conditionedGroup
+                .addMapping("category", "dw", (m) -> dwList.contains(m.get("category")))
+                .addMapping("category", "dzz", (m) -> dzzList.contains(m.get("category")));
 
         GroupByOperationMapping<Map<String, Object>, Map<String, Object>> mapping =
                 new GroupByOperationMapping<>()
                         .nullValueHandler(() -> 0L)
                         .addMapping("category", "count", Collectors.counting());
 
-        conditionedGroup.andThen(mapping)
+
+        conditionedGroup
+                .andThen(mapping)
                 .transform(input.readCollection().stream())
                 .forEach(System.out::println);
 
