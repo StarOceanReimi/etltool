@@ -6,10 +6,10 @@ import com.limin.etltool.core.Transformer;
 import com.limin.etltool.util.Beans;
 
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
 
 /**
  * @author 邱理
@@ -17,8 +17,8 @@ import java.util.function.Supplier;
  * @date 创建于 2019/12/21
  */
 public abstract class GroupByFieldReducer<E, O>
-    extends CachedBeanOperationTransform<Map<Map<String, Object>, List<E>>, Collection<O>>
-        implements Transformer<Map<Map<String, Object>, List<E>>, Collection<O>> {
+    extends CachedBeanOperationTransform<Map<Map<String, Object>, List<E>>, Stream<O>>
+        implements Transformer<Map<Map<String, Object>, List<E>>, Stream<O>> {
 
     public abstract O reduce(List<E> data);
 
@@ -29,8 +29,8 @@ public abstract class GroupByFieldReducer<E, O>
 
     @SuppressWarnings("unchecked")
     @Override
-    public Collection<O> transform(Map<Map<String, Object>, List<E>> data) {
-        if(data.isEmpty()) return Collections.emptyList();
+    public Stream<O> transform(Map<Map<String, Object>, List<E>> data) {
+        if(data.isEmpty()) return Stream.empty();
         Collection<O> result = Lists.newArrayList();
         O sampleData = getOutSupplier().get();
         Beans.FastBeanOperation op = loadOperation(sampleData);
@@ -42,7 +42,7 @@ public abstract class GroupByFieldReducer<E, O>
             merge(out, reduce(value));
             result.add(out);
         });
-        return result;
+        return result.stream();
     }
 
     @SuppressWarnings("unchecked")

@@ -1,17 +1,21 @@
 package com.limin.etltool.work;
 
 import com.google.common.base.Stopwatch;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import com.limin.etltool.core.*;
 import com.limin.etltool.database.*;
 import com.limin.etltool.database.mysql.DefaultMySqlDatabase;
-import com.limin.etltool.step.*;
+import com.limin.etltool.step.ColumnEditing;
+import com.limin.etltool.step.ColumnMapping;
+import com.limin.etltool.step.GroupByFieldWithCondition;
+import com.limin.etltool.step.GroupByOperationMapping;
 import lombok.val;
 
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * @author 邱理
@@ -20,23 +24,19 @@ import java.util.stream.Collectors;
  */
 public class Flow<I, O> implements Operation<I, O> {
 
-    public void processInBatch(int batchSize, BatchInput<I> input, Transformer<I, O> t, Output<O> output) throws EtlException {
+    public void processInBatch(int batchSize, BatchInput<I> input, Transformer<Stream<I>, Stream<O>> t, Output<O> output) throws EtlException {
         Batch<I> batch = input.readInBatch(batchSize);
         try {
             while (batch.hasMore()) {
                 List<I> data = batch.getMore();
-                List<O> list = data.stream()
-                        .map(t::transform)
-                        .filter(Objects::nonNull)
-                        .collect(Collectors.toList());
-                output.writeCollection(list);
+                output.writeCollection(t.transform(data.stream()).collect(Collectors.toList()));
             }
         } finally {
             batch.release();
         }
     }
 
-    private void moveStudyRecordTest() throws EtlException {
+    private static void moveStudyRecordTest() throws EtlException {
 
         String sql = "select id, user_id, unit_id, content_id, start_time, end_time, dif_time study_time from edu_learn_note";
         DatabaseConfiguration inputConfig = new DatabaseConfiguration("classpath:database.yml");
@@ -67,6 +67,8 @@ public class Flow<I, O> implements Operation<I, O> {
 
     public static void main(String[] args) throws Exception {
 
+
+
         DatabaseConfiguration configuration = new DatabaseConfiguration("classpath:database.yml");
         Database database = new DefaultMySqlDatabase(configuration.databaseName("dangjian"));
         DatabaseAccessor accessor = new TableColumnAccessor("fact_party_org").column("id", "category");
@@ -81,7 +83,8 @@ public class Flow<I, O> implements Operation<I, O> {
                         .nullValueHandler(() -> 0L)
                         .addMapping("category", "count", Collectors.counting());
 
-        conditionedGroup.andThen(mapping).transform(input.readCollection())
+        conditionedGroup.andThen(mapping)
+                .transform(input.readCollection().stream())
                 .forEach(System.out::println);
 
     }

@@ -10,6 +10,7 @@ import java.beans.PropertyDescriptor;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.stream.Stream;
 
 /**
  * @author 邱理
@@ -17,22 +18,22 @@ import java.util.function.Consumer;
  * @date 创建于 2019/12/19
  */
 @Slf4j
-public class ColumnEditing<I> extends CachedBeanOperationTransform<I, I> implements Transformer<I, I> {
+public class ColumnEditing<E> extends CachedBeanOperationTransform<Stream<E>, Stream<E>>
+        implements Transformer<Stream<E>, Stream<E>> {
 
-    private Map<String, Consumer<I>> columnEditorMemo = Maps.newHashMap();
+    private Map<String, Consumer<E>> columnEditorMemo = Maps.newHashMap();
 
-    public void registerEditor(String columnName, Consumer<I> editor) {
+    public void registerEditor(String columnName, Consumer<E> editor) {
         columnEditorMemo.put(columnName, editor);
     }
 
     @SuppressWarnings("unchecked")
-    @Override
-    public I transform(I data) {
+    protected E innerTransform(E data) {
         if(data instanceof Map) {
-            Map<String, I> dataMap = ((Map<String, I>) data);
+            Map<String, E> dataMap = ((Map<String, E>) data);
             Set<String> keySet = dataMap.keySet();
             for (String key : keySet) {
-                Consumer<I> editor = columnEditorMemo.get(key);
+                Consumer<E> editor = columnEditorMemo.get(key);
                 if(editor != null) editor.accept(data);
             }
         } else {
@@ -40,14 +41,19 @@ public class ColumnEditing<I> extends CachedBeanOperationTransform<I, I> impleme
             PropertyDescriptor[] descriptors = PropertyUtils.getPropertyDescriptors(data.getClass());
             for (PropertyDescriptor descriptor : descriptors) {
                 String propertyName = descriptor.getDisplayName();
-                Consumer<I> editor = columnEditorMemo.get(propertyName);
+                Consumer<E> editor = columnEditorMemo.get(propertyName);
                 if (editor != null) {
-                    I value = (I) dataOp.invokeGetter(data, propertyName);
+                    E value = (E) dataOp.invokeGetter(data, propertyName);
                     editor.accept(value);
                 }
             }
 
         }
         return data;
+    }
+
+    @Override
+    public Stream<E> transform(Stream<E> data) {
+        return data.map(this::innerTransform);
     }
 }

@@ -24,7 +24,6 @@ import java.util.regex.Pattern;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.limin.etltool.util.Exceptions.propagate;
 import static com.limin.etltool.util.TemplateUtils.logFormat;
-import static java.util.Optional.ofNullable;
 
 /**
  * @author 邱理
@@ -74,14 +73,15 @@ public class DatabaseConfiguration {
 
         InputStreamReader reader;
 
-        propertyFileLocation = ofNullable(propertyFileLocation).orElse(DEFAULT_LOCATION);
+        propertyFileLocation = Strings.isNullOrEmpty(propertyFileLocation)
+                ? DEFAULT_LOCATION : propertyFileLocation;
 
         if(propertyFileLocation.startsWith("classpath:")) {
 
             propertyFileLocation = propertyFileLocation.substring("classpath:".length());
             ClassLoader cl = Thread.currentThread().getContextClassLoader();
             InputStream stream = cl.getResourceAsStream(propertyFileLocation);
-            checkArgument(stream != null, logFormat("{} has not resource", propertyFileLocation));
+            checkArgument(stream != null, logFormat("{} has no resource", propertyFileLocation));
             reader = new InputStreamReader(stream, Charsets.UTF_8);
 
         } else {

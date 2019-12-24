@@ -14,12 +14,10 @@ import java.util.stream.Collectors;
  */
 public interface Operation<I, O> {
 
-    default void process(Input<I> input, Transformer<I, O> transformer, Output<O> output) throws EtlException {
+    default void process(Input<I> input,
+                         Transformer<Collection<I>, Collection<O>> transformer,
+                         Output<O> output) throws EtlException {
         Collection<I> inputCollection = input.readCollection();
-        List<O> buffer = inputCollection.stream()
-                .map(transformer::transform)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
-        output.writeCollection(buffer);
+        output.writeCollection(transformer.transform(inputCollection));
     }
 }

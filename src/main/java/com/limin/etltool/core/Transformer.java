@@ -1,5 +1,6 @@
 package com.limin.etltool.core;
 
+import java.util.Collection;
 import java.util.Objects;
 
 /**

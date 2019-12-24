@@ -17,6 +17,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static java.util.Optional.ofNullable;
 
@@ -26,7 +28,7 @@ import static java.util.Optional.ofNullable;
  * @date 创建于 2019/12/19
  */
 @Slf4j
-public class ColumnMapping<T1, T2> extends CachedBeanOperationTransform<T1, T2> implements Transformer<T1, T2> {
+public class ColumnMapping<T1, T2> extends CachedBeanOperationTransform<Stream<T1>, Stream<T2>> implements Transformer<Stream<T1>, Stream<T2>> {
 
     private Map<String, String> columnMapping = Maps.newHashMap();
 
@@ -75,8 +77,7 @@ public class ColumnMapping<T1, T2> extends CachedBeanOperationTransform<T1, T2> 
         }
     }
 
-    @Override
-    public T2 transform(T1 data) {
+    protected T2 innerTransform(T1 data) {
         T2 target = outputBeanSupplier.get();
         if(data instanceof Map) {
             Map<String, Object> inputMap = (Map<String, Object>) data;
@@ -113,10 +114,19 @@ public class ColumnMapping<T1, T2> extends CachedBeanOperationTransform<T1, T2> 
 
         ColumnEditing<Map<String, Object>> editor = new ColumnEditing<>();
         editor.registerEditor("fake", (m) -> m.put("fake", ThreadLocalRandom.current().nextInt()));
-        val trans = columnMapping.andThen(editor);
 
-        collection.stream()
-                .map(trans::transform)
-                .forEach(System.out::println);
+        GroupByField<Map<String, Object>> byField = new GroupByField<>("content");
+
+        GroupByOperationMapping<Map<String, Object>, Map<String, Object>> groupByOperationMapping =
+                new GroupByOperationMapping<>().addMapping("content", "count", Collectors.counting());
+
+        columnMapping.andThen(editor).andThen(byField).andThen(groupByOperationMapping)
+                .transform(collection.stream()).forEach(System.out::println);
+
+    }
+
+    @Override
+    public Stream<T2> transform(Stream<T1> data) {
+        return data.map(this::innerTransform);
     }
 }

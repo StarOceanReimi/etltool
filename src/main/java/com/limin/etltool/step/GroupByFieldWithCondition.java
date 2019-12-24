@@ -5,10 +5,10 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.limin.etltool.core.Reducer;
 
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -19,8 +19,8 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * @date 创建于 2019/12/23
  */
 public class GroupByFieldWithCondition<E>
-        extends CachedBeanOperationTransform<Collection<E>, Map<Map<String, Object>, List<E>>>
-        implements Reducer<E, Collection<E>, Map<Map<String, Object>, List<E>>> {
+        extends CachedBeanOperationTransform<Stream<E>, Map<Map<String, Object>, List<E>>>
+        implements Reducer<E, Stream<E>, Map<Map<String, Object>, List<E>>> {
 
     private Map<String, Predicate<E>> predicateMap;
 
