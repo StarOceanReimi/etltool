@@ -47,7 +47,6 @@ public class ColumnEditing<E> extends CachedBeanOperationTransform<Stream<E>, St
                     editor.accept(value);
                 }
             }
-
         }
         return data;
     }

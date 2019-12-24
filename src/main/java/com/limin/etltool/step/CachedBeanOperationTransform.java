@@ -1,13 +1,10 @@
 package com.limin.etltool.step;
 
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
+import com.google.common.collect.Maps;
 import com.limin.etltool.core.Transformer;
 import com.limin.etltool.util.Beans;
-import com.limin.etltool.util.Exceptions;
 
-import java.util.concurrent.ExecutionException;
+import java.util.Map;
 
 /**
  * @author 邱理
@@ -16,14 +13,9 @@ import java.util.concurrent.ExecutionException;
  */
 public abstract class CachedBeanOperationTransform<I, O> implements Transformer<I, O> {
 
-    private static final LoadingCache<Class<?>, Beans.FastBeanOperation> operationCache =
-            CacheBuilder.newBuilder().build(CacheLoader.from(Beans::getFastBeanOperation));
+    private final Map<Class<?>, Beans.FastBeanOperation> operationCache = Maps.newHashMap();
 
     protected Beans.FastBeanOperation loadOperation(Object data) {
-        try {
-            return operationCache.get(data.getClass());
-        } catch (ExecutionException e) {
-            throw Exceptions.propagate(e);
-        }
+        return operationCache.computeIfAbsent(data.getClass(), Beans::getFastBeanOperation);
     }
 }

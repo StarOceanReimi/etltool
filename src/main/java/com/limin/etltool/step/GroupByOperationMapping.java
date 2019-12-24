@@ -40,7 +40,7 @@ public class GroupByOperationMapping<E, O> extends GroupByFieldReducer<E, O> {
         return this;
     }
 
-    public GroupByOperationMapping addMapping(String fieldName, String statName, Collector<E, ?, ?> reducer) {
+    public GroupByOperationMapping addMapping(String fieldName, String statName, Collector<?, ?, ?> reducer) {
         checkArgument(!Strings.isNullOrEmpty(fieldName), "fieldName cannot be empty");
         checkArgument(!Strings.isNullOrEmpty(statName), "statName cannot be empty");
         checkNotNull(reducer, "reducer cannot be null");

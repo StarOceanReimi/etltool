@@ -103,6 +103,7 @@ public class ColumnMapping<T1, T2> extends CachedBeanOperationTransform<Stream<T
         return target;
     }
 
+    @SuppressWarnings("unchecked")
     public static void main(String[] args) throws EtlException {
         DatabaseConfiguration configuration = new DatabaseConfiguration();
         Database database = new DefaultMySqlDatabase(configuration);
