@@ -1,17 +1,16 @@
 package com.limin.etltool.work;
 
 import com.google.common.base.Stopwatch;
+import com.google.common.collect.Lists;
 import com.limin.etltool.core.*;
 import com.limin.etltool.database.*;
 import com.limin.etltool.database.mysql.DefaultMySqlDatabase;
-import com.limin.etltool.step.ColumnEditing;
-import com.limin.etltool.step.ColumnMapping;
-import com.limin.etltool.step.GroupByFieldWithCondition;
-import com.limin.etltool.step.GroupByOperationMapping;
+import com.limin.etltool.step.*;
 import lombok.val;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -71,24 +70,32 @@ public class Flow<I, O> implements Operation<I, O> {
 
         DatabaseConfiguration configuration = new DatabaseConfiguration("classpath:database.yml");
         Database database = new DefaultMySqlDatabase(configuration.databaseName("dangjian"));
-        DatabaseAccessor accessor = new TableColumnAccessor("fact_party_org").column("id", "category");
+        DatabaseAccessor accessor = new TableColumnAccessor("fact_party_org").column("id", "parent_id", "category");
         DbInput<Map<String, Object>> input = new NormalDbInput<Map<String, Object>>(database, accessor) {};
 
-        GroupByFieldWithCondition<Map<String, Object>> conditionedGroup = new GroupByFieldWithCondition<>();
-        List<Long> dwList   = Arrays.asList(10000141L, 10000142L);
-        List<Long> dzzList  = Arrays.asList(10000143L, 10000144L);
-        conditionedGroup
-                .addMapping("category", "dw", (m) -> dwList.contains(m.get("category")))
-                .addMapping("category", "dzz", (m) -> dzzList.contains(m.get("category")));
+        MemoCacheTransformer<Map<String, Object>> memoCacheTransformer =
+                new MemoCacheTransformer<>("id", "parent_id", (me, parent)-> {
+                    me.putIfAbsent("children_count", 1L);
+                    me.putIfAbsent("children_categories", Lists.newArrayList());
+                    ((List)me.get("children_categories")).add(me.get("category"));
+                    if(parent == null) return;
+                    Long children = (Long) parent.getOrDefault("children_count", 1L);
+                    List<Object> childrenCategories = (List<Object>) parent.getOrDefault("children_categories", Lists.newArrayList());
+                    childrenCategories.addAll((Collection<?>) me.get("children_categories"));
+                    parent.putIfAbsent("children_categories", childrenCategories);
+                    parent.put("children_count", children + (Long) me.get("children_count"));
+                });
 
-        GroupByOperationMapping<Map<String, Object>, Map<String, Object>> mapping =
-                new GroupByOperationMapping<>()
-                        .nullValueHandler(() -> 0L)
-                        .addMapping("category", "count", Collectors.counting());
+        memoCacheTransformer.cidReOrdered(true);
 
+//        GroupByField<Map<String, Object>> groupByField = new GroupByField<>("category");
+//
+//        GroupByOperationMapping<Map<String, Object>, Map<String, Object>> operationMapping =
+//                new GroupByOperationMapping<>()
+//                    .addMapping("children_count", "sum", Collectors.summingLong(o -> (Long) o));
 
-        conditionedGroup
-                .andThen(mapping)
+        memoCacheTransformer
+//                .andThen(groupByField).andThen(operationMapping)
                 .transform(input.readCollection().stream())
                 .forEach(System.out::println);
 

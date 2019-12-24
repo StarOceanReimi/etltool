@@ -1,7 +1,5 @@
 package com.limin.etltool.database;
 
-import com.google.common.base.Stopwatch;
-import com.google.common.collect.Lists;
 import com.limin.etltool.core.EtlException;
 import com.limin.etltool.database.mysql.ColumnDefinition;
 import com.limin.etltool.database.mysql.ColumnDefinitionHelper;
@@ -11,7 +9,6 @@ import com.limin.etltool.util.Exceptions;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.val;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.statement.Statement;
@@ -20,23 +17,17 @@ import net.sf.jsqlparser.statement.delete.Delete;
 import net.sf.jsqlparser.statement.insert.Insert;
 import net.sf.jsqlparser.statement.update.Update;
 import org.apache.commons.collections.CollectionUtils;
-import org.apache.ibatis.annotations.Results;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
-import java.util.function.Function;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkState;
-import static com.limin.etltool.database.mysql.ColumnDefinition.INT;
-import static com.limin.etltool.database.mysql.ColumnDefinition.VARCHAR;
 import static com.limin.etltool.util.Exceptions.rethrow;
 import static com.limin.etltool.util.TemplateUtils.logFormat;
 
@@ -59,12 +50,18 @@ public class NormalDbOutput<T> extends AbstractDbOutput<T> {
 
     private boolean truncateTableBeforeInsert = false;
 
+    private boolean onlyTruncateInFirstTimeInBatch = true;
+
     public void setCreateTableIfNotExists(boolean createTableIfNotExists) {
         this.createTableIfNotExists = createTableIfNotExists;
     }
 
     public void setTruncateTableBeforeInsert(boolean truncateTableBeforeInsert) {
         this.truncateTableBeforeInsert = truncateTableBeforeInsert;
+    }
+
+    public void setOnlyTruncateInFirstTimeInBatch(boolean truncateAtFirstTime) {
+        this.onlyTruncateInFirstTimeInBatch = truncateAtFirstTime;
     }
 
     @Override
@@ -76,6 +73,8 @@ public class NormalDbOutput<T> extends AbstractDbOutput<T> {
         } else if(truncateTableBeforeInsert) {
             T data = dataCollection.stream().findAny().get();
             tryTruncateTable(data);
+            if(onlyTruncateInFirstTimeInBatch)
+                truncateTableBeforeInsert = false;
         }
         return super.writeCollection(dataCollection);
     }
@@ -211,8 +210,6 @@ public class NormalDbOutput<T> extends AbstractDbOutput<T> {
 
         DatabaseConfiguration configuration = new DatabaseConfiguration();
         DefaultMySqlDatabase database = new DefaultMySqlDatabase(configuration);
-
-
 
     }
 }
