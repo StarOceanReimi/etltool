@@ -66,6 +66,7 @@ public class Flow<I, O> implements Operation<I, O> {
 
     public static void main(String[] args) throws Exception {
 
+//        moveStudyRecordTest();
 
 
         DatabaseConfiguration configuration = new DatabaseConfiguration("classpath:database.yml");
@@ -85,8 +86,9 @@ public class Flow<I, O> implements Operation<I, O> {
                     parent.putIfAbsent("children_categories", childrenCategories);
                     parent.put("children_count", children + (Long) me.get("children_count"));
                 });
-
         memoCacheTransformer.cidReOrdered(true);
+
+
 
 //        GroupByField<Map<String, Object>> groupByField = new GroupByField<>("category");
 //
@@ -94,10 +96,12 @@ public class Flow<I, O> implements Operation<I, O> {
 //                new GroupByOperationMapping<>()
 //                    .addMapping("children_count", "sum", Collectors.summingLong(o -> (Long) o));
 
-        memoCacheTransformer
+//        memoCacheTransformer
 //                .andThen(groupByField).andThen(operationMapping)
-                .transform(input.readCollection().stream())
-                .forEach(System.out::println);
+//                .transform(input.readCollection().stream())
+//                .forEach(System.out::println);
 
+//        input.readCollection().forEach(System.out::println);
     }
+
 }

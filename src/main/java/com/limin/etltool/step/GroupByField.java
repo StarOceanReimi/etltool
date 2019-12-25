@@ -2,12 +2,10 @@ package com.limin.etltool.step;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.google.common.collect.Streams;
 import com.limin.etltool.core.Reducer;
 import com.limin.etltool.util.Beans;
 import org.apache.commons.collections.CollectionUtils;
 
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;

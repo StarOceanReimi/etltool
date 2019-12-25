@@ -1,7 +1,6 @@
 package com.limin.etltool.step;
 
 import com.google.common.collect.Maps;
-import com.limin.etltool.core.Transformer;
 import com.limin.etltool.util.Beans;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.beanutils.PropertyUtils;
@@ -18,8 +17,7 @@ import java.util.stream.Stream;
  * @date 创建于 2019/12/19
  */
 @Slf4j
-public class ColumnEditing<E> extends CachedBeanOperationTransform<Stream<E>, Stream<E>>
-        implements Transformer<Stream<E>, Stream<E>> {
+public class ColumnEditing<E> extends CachedBeanOperationTransform<Stream<E>, Stream<E>> {
 
     private Map<String, Consumer<E>> columnEditorMemo = Maps.newHashMap();
 

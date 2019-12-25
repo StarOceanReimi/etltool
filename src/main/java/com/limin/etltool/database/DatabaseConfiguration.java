@@ -1,6 +1,7 @@
 package com.limin.etltool.database;
 
 import com.google.common.base.Charsets;
+import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import com.google.common.collect.Maps;
 import lombok.Data;
@@ -16,7 +17,9 @@ import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.util.Iterator;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -24,6 +27,7 @@ import java.util.regex.Pattern;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.limin.etltool.util.Exceptions.propagate;
 import static com.limin.etltool.util.TemplateUtils.logFormat;
+import static java.util.Objects.requireNonNull;
 
 /**
  * @author 邱理
@@ -46,6 +50,60 @@ public class DatabaseConfiguration {
     private static final String DEFAULT_LOCATION = "classpath:database.yml";
 
     private static final Yaml YAML = new Yaml();
+
+    private static final Splitter DOT_SPLITTER = Splitter.on('.').trimResults();
+
+    private static String getProperty(Properties properties, String name) {
+        String property = properties.getProperty(name);
+        if(!Strings.isNullOrEmpty(property)) return property;
+        Iterator<String> iter = DOT_SPLITTER.split(name).iterator();
+        Object subProp = null;
+        while (iter.hasNext()) {
+            if(subProp == null) subProp = properties.get(iter.next());
+            if(Objects.isNull(subProp)) return null;
+            if(subProp instanceof Map) subProp = ((Map) subProp).get(iter.next());
+            if(subProp instanceof String) return (String) subProp;
+        }
+        return null;
+    }
+
+    public static DatabaseConfiguration withSpringApplication() {
+        ClassLoader cl = Thread.currentThread().getContextClassLoader();
+        String activeProfile = findActiveProfile(cl);
+        InputStream configStream = cl.getResourceAsStream(String.format("application-%s.yml", activeProfile));
+        Properties properties = YAML.loadAs(configStream, Properties.class);
+        String dynamic = getProperty(properties, "spring.datasource.dynamic.primary");
+        Properties adaptProperties = new Properties();
+        if(!Strings.isNullOrEmpty(dynamic)) {
+            adaptProperties.put("url", requireNonNull(getProperty(
+                    properties, "spring.datasource.dynamic.datasource." + dynamic + ".url")));
+            adaptProperties.put("username", requireNonNull(getProperty(
+                    properties, "spring.datasource.dynamic.datasource." + dynamic + ".username")));
+            adaptProperties.put("password", requireNonNull(getProperty(
+                    properties, "spring.datasource.dynamic.datasource." + dynamic + ".password")));
+            adaptProperties.put("driverClassName", requireNonNull(
+                    getProperty(properties, "spring.datasource.dynamic.datasource." + dynamic + ".driver-class-name")));
+        } else {
+            adaptProperties.put("url", requireNonNull(
+                    getProperty(properties, "spring.datasource.url")));
+            adaptProperties.put("username", requireNonNull(
+                    getProperty(properties, "spring.datasource.username")));
+            adaptProperties.put("password", requireNonNull(
+                    getProperty(properties, "spring.datasource.password")));
+            adaptProperties.put("driverClassName", requireNonNull(
+                    getProperty(properties, "spring.datasource.driver-class-name")));
+        }
+        return new DatabaseConfiguration(adaptProperties);
+    }
+
+    private static String findActiveProfile(ClassLoader cl) {
+        String active = System.getProperty("spring.profiles.active");
+        if(!Strings.isNullOrEmpty(active)) return active;
+        InputStream stream = cl.getResourceAsStream("application.yml");
+        if(stream == null) return "dev";
+        Properties properties = YAML.loadAs(stream, Properties.class);
+        return properties.getProperty("spring.profiles.active", "dev");
+    }
 
     public DatabaseConfiguration() {
         this("");
@@ -140,4 +198,5 @@ public class DatabaseConfiguration {
         builder.append(ori.substring(matcher.end(groupName)));
         return builder.toString();
     }
+
 }

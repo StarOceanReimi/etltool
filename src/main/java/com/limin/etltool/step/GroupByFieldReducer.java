@@ -1,11 +1,8 @@
 package com.limin.etltool.step;
 
-import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.limin.etltool.core.Transformer;
 import com.limin.etltool.util.Beans;
 
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -17,8 +14,7 @@ import java.util.stream.Stream;
  * @date 创建于 2019/12/21
  */
 public abstract class GroupByFieldReducer<E, O>
-    extends CachedBeanOperationTransform<Map<Map<String, Object>, List<E>>, Stream<O>>
-        implements Transformer<Map<Map<String, Object>, List<E>>, Stream<O>> {
+    extends CachedBeanOperationTransform<Map<Map<String, Object>, List<E>>, Stream<O>> {
 
     public abstract O reduce(List<E> data);
 

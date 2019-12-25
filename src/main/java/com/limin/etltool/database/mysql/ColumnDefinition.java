@@ -5,6 +5,9 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import org.apache.commons.collections.CollectionUtils;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.sql.Timestamp;
 import java.time.*;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -129,11 +132,18 @@ public class ColumnDefinition {
                 return DECIMAL(11, 4);
             if(clazz == Float.class || clazz == Float.TYPE)
                 return DECIMAL(6, 2);
+            if(clazz == BigDecimal.class)
+                return DECIMAL(11, 4);
+            if(clazz == BigInteger.class)
+                return BIGINT(20);
             if(clazz == Boolean.class || clazz == Boolean.TYPE)
                 return TINYINT(1);
             if(CharSequence.class.isAssignableFrom(clazz))
                 return VARCHAR(null);
-            if(clazz == Date.class || clazz == LocalDateTime.class || clazz == ZonedDateTime.class)
+            if(clazz == Date.class ||
+                    clazz == Timestamp.class ||
+                    clazz == LocalDateTime.class ||
+                    clazz == ZonedDateTime.class)
                 return DATETIME();
             if(clazz == LocalDate.class)
                 return DATE();
@@ -153,6 +163,7 @@ public class ColumnDefinition {
                     || ignoreCase.contains("content"))
                 return TEXT();
             if(ignoreCase.contains("date")
+                    || ignoreCase.contains("modify_at")
                     || ignoreCase.contains("time"))
                 return DATETIME();
 
@@ -180,7 +191,6 @@ public class ColumnDefinition {
 
     @Override
     public String toString() {
-
         StringBuilder builder = new StringBuilder();
         builder.append(name).append(" ")
                .append(type).append(" ");
@@ -203,5 +213,7 @@ public class ColumnDefinition {
     }
 
     public static void main(String[] args) {
+
+
     }
 }

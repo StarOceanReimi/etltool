@@ -32,6 +32,7 @@ public abstract class Beans {
     public static void copy(Object dest, Object source) {
         copy(dest, source, null);
     }
+
     public static void copy(Object dest, Object source, Converter converter) {
         Preconditions.checkNotNull(source, "copy source cannot be null");
         Preconditions.checkNotNull(dest, "copy destination cannot be null");

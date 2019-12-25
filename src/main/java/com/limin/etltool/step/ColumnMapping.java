@@ -4,7 +4,6 @@ import com.google.common.base.Strings;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.limin.etltool.core.EtlException;
-import com.limin.etltool.core.Transformer;
 import com.limin.etltool.database.*;
 import com.limin.etltool.database.mysql.DefaultMySqlDatabase;
 import com.limin.etltool.util.Beans;
@@ -29,7 +28,7 @@ import static java.util.Optional.ofNullable;
  * @date 创建于 2019/12/19
  */
 @Slf4j
-public class ColumnMapping<T1, T2> extends CachedBeanOperationTransform<Stream<T1>, Stream<T2>> implements Transformer<Stream<T1>, Stream<T2>> {
+public class ColumnMapping<T1, T2> extends CachedBeanOperationTransform<Stream<T1>, Stream<T2>> {
 
     private Map<String, String> columnMapping = Maps.newHashMap();
 

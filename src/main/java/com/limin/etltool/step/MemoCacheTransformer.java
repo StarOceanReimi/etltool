@@ -1,17 +1,12 @@
 package com.limin.etltool.step;
 
-import com.limin.etltool.core.Transformer;
-import com.limin.etltool.database.util.nameconverter.INameConverter;
 import com.limin.etltool.util.Beans;
 
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.BiConsumer;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 
 /**
@@ -19,9 +14,7 @@ import static java.util.stream.Collectors.toMap;
  * @description
  * @date 创建于 2019/12/23
  */
-public class MemoCacheTransformer<E>
-        extends CachedBeanOperationTransform<Stream<E>, Stream<E>>
-        implements Transformer<Stream<E>, Stream<E>> {
+public class MemoCacheTransformer<E> extends CachedBeanOperationTransform<Stream<E>, Stream<E>> {
 
     private final String cidName;
 

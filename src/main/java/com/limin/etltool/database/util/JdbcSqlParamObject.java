@@ -4,15 +4,10 @@ import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.Lists;
 import com.limin.etltool.database.util.nameconverter.INameConverter;
-import com.limin.etltool.database.util.nameconverter.NameConverter;
 import com.limin.etltool.util.Beans;
-import lombok.AllArgsConstructor;
-import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.beanutils.PropertyUtils;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
