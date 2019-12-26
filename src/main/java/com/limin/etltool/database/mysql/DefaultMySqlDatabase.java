@@ -102,12 +102,7 @@ public class DefaultMySqlDatabase implements Database {
     }
 
     public static void main(String[] args) {
-        DatabaseConfiguration configuration = new DatabaseConfiguration();
-        DefaultMySqlDatabase database = new DefaultMySqlDatabase(configuration);
-        Map<String, Object> map = Maps.newLinkedHashMap();
-        map.put("id", 123L);
-        map.put("name", "QL");
-        List<ColumnDefinition> defs = ColumnDefinitionHelper.fromMap(map);
-        database.createTable("temp", null, defs);
+        DatabaseConfiguration.withSpringApplication("new").attribute("test", true);
+
     }
 }

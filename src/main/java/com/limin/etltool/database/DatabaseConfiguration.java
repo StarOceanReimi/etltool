@@ -28,6 +28,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.limin.etltool.util.Exceptions.propagate;
 import static com.limin.etltool.util.TemplateUtils.logFormat;
 import static java.util.Objects.requireNonNull;
+import static java.util.Optional.ofNullable;
 
 /**
  * @author 邱理
@@ -45,7 +46,7 @@ public class DatabaseConfiguration {
 
     private String driverClassName;
 
-    private Map<String, Object> attributes = Maps.newHashMap();
+    private final Map<String, Object> attributes = Maps.newHashMap();
 
     private static final String DEFAULT_LOCATION = "classpath:database.yml";
 
@@ -67,12 +68,14 @@ public class DatabaseConfiguration {
         return null;
     }
 
-    public static DatabaseConfiguration withSpringApplication() {
+    public static DatabaseConfiguration withSpringApplication(String dynamicDbKey) {
         ClassLoader cl = Thread.currentThread().getContextClassLoader();
         String activeProfile = findActiveProfile(cl);
         InputStream configStream = cl.getResourceAsStream(String.format("application-%s.yml", activeProfile));
         Properties properties = YAML.loadAs(configStream, Properties.class);
-        String dynamic = getProperty(properties, "spring.datasource.dynamic.primary");
+
+        String dynamic = ofNullable(dynamicDbKey).orElseGet(() ->
+                getProperty(properties, "spring.datasource.dynamic.primary"));
         Properties adaptProperties = new Properties();
         if(!Strings.isNullOrEmpty(dynamic)) {
             adaptProperties.put("url", requireNonNull(getProperty(
@@ -94,6 +97,10 @@ public class DatabaseConfiguration {
                     getProperty(properties, "spring.datasource.driver-class-name")));
         }
         return new DatabaseConfiguration(adaptProperties);
+
+    }
+    public static DatabaseConfiguration withSpringApplication() {
+        return withSpringApplication(null);
     }
 
     private static String findActiveProfile(ClassLoader cl) {
@@ -113,6 +120,7 @@ public class DatabaseConfiguration {
         val descs = PropertyUtils.getPropertyDescriptors(getClass());
         for(val prop : descs) {
             if(prop.getDisplayName().equals("class")) continue;
+            if(prop.getDisplayName().equals("attributes")) continue;
             Object propVal = properties.get(prop.getDisplayName());
             Method writer = prop.getWriteMethod();
             try {

@@ -1,4 +1,4 @@
-url: jdbc:mysql://192.168.137.57:3306/user_center
+url: jdbc:mysql://192.168.137.55:3306/user_center
 username: dangjian
 password: uNdvlOK5vMkqU6Xx15vtmEDdxzniQiuE
 #url: jdbc:mysql://192.168.137.59:3306/dangjian

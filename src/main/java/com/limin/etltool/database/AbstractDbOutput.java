@@ -111,6 +111,7 @@ public abstract class AbstractDbOutput<T> extends DbSupport<T> implements DbOutp
                 returnGeneratedKey = Statement.RETURN_GENERATED_KEYS;
             }
         }
+        log.debug("SQL: {}", sql);
         return connection.prepareStatement(sql, returnGeneratedKey);
     }
 

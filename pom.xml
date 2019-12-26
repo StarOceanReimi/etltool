@@ -93,13 +93,13 @@
 
     <build>
         <resources>
-            <resource>
-                <directory>src/main/resources</directory>
-                <filtering>true</filtering>
-                <excludes>
-                    <exclude>**/*.yml</exclude>
-                </excludes>
-            </resource>
+<!--            <resource>-->
+<!--                <directory>src/main/resources</directory>-->
+<!--                <filtering>true</filtering>-->
+<!--                <excludes>-->
+<!--                    <exclude>**/*.yml</exclude>-->
+<!--                </excludes>-->
+<!--            </resource>-->
         </resources>
         <plugins>
             <plugin>
