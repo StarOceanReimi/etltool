@@ -4,7 +4,9 @@ import com.google.common.base.Charsets;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import com.google.common.collect.Maps;
+import com.limin.etltool.util.Exceptions;
 import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.beanutils.PropertyUtils;
 import org.yaml.snakeyaml.Yaml;
@@ -17,11 +19,15 @@ import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import java.util.*;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
 import static com.limin.etltool.util.Exceptions.propagate;
 import static com.limin.etltool.util.TemplateUtils.logFormat;
 import static java.util.Objects.requireNonNull;
@@ -33,6 +39,7 @@ import static java.util.Optional.ofNullable;
  * @date 创建于 2019/12/17
  */
 @Data
+@Slf4j
 public class DatabaseConfiguration {
 
     private String url;
@@ -63,6 +70,28 @@ public class DatabaseConfiguration {
             if(subProp instanceof String) return (String) subProp;
         }
         return null;
+    }
+
+    public static DatabaseConfiguration input(ClassLoader cl, String databaseName) {
+        checkNotNull(cl, "classLoader cannot be null");
+        checkArgument(!Strings.isNullOrEmpty(databaseName), "database name cannot be empty");
+        return withClassloader(cl, "etl-db/input").databaseName(databaseName);
+    }
+
+    public static DatabaseConfiguration output(ClassLoader cl, String databaseName) {
+        checkNotNull(cl, "classLoader cannot be null");
+        checkArgument(!Strings.isNullOrEmpty(databaseName), "database name cannot be empty");
+        return withClassloader(cl, "etl-db/output").databaseName(databaseName);
+    }
+
+    private static DatabaseConfiguration withClassloader(ClassLoader cl, String path) {
+        String activeProfile = findActiveProfile(cl);
+        String file = String.format("%s/db-%s.yml", path, activeProfile);
+        InputStream configStream = cl.getResourceAsStream(file);
+        if(configStream == null)
+            throw Exceptions.inform("cannot find file: {}", file);
+        Properties properties = YAML.loadAs(configStream, Properties.class);
+        return new DatabaseConfiguration(properties);
     }
 
     public static DatabaseConfiguration withSpringApplication(String dynamicDbKey) {
@@ -205,6 +234,8 @@ public class DatabaseConfiguration {
     }
 
     public static void main(String[] args) {
+
+
     }
 
 }

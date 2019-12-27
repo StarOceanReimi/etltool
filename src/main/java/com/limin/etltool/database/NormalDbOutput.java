@@ -70,7 +70,9 @@ public class NormalDbOutput<T> extends AbstractDbOutput<T> {
         if(createTableIfNotExists) {
             T data = dataCollection.stream().findAny().get();
             tryCreateTable(data);
-        } else if(truncateTableBeforeInsert) {
+        }
+
+        if(truncateTableBeforeInsert) {
             T data = dataCollection.stream().findAny().get();
             tryTruncateTable(data);
             if(onlyTruncateInFirstTimeInBatch)
@@ -184,7 +186,7 @@ public class NormalDbOutput<T> extends AbstractDbOutput<T> {
         return flag.get();
     }
 
-    private boolean checkTableExists(final String tableName) {
+    public boolean checkTableExists(final String tableName) {
         AtomicBoolean flag = new AtomicBoolean();
         executeStatement((ResultSetStatementHandler) statement -> {
             ResultSet set = statement.executeQuery(logFormat("SELECT 1 FROM {}", tableName));

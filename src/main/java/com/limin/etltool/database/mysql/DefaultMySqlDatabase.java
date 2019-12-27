@@ -53,6 +53,8 @@ public class DefaultMySqlDatabase implements Database {
                 url += "&" + toQueryString(wrapToQueryStringMap(configuration.getAttributes()));
         }
 
+        log.info("CONNECTION URL: {}", url);
+
         try {
             return DriverManager.getConnection(url, configuration.getUsername(), configuration.getPassword());
         } catch (SQLException e) {

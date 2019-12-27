@@ -69,8 +69,6 @@ public class Flow<I, O> implements Operation<I, O> {
 
 //        moveStudyRecordTest();
 
-        ColumnDefinitionHelper.suggestColumnType("device", VARCHAR(255));
-
         DatabaseConfiguration inputConfig = new DatabaseConfiguration("classpath:database.yml");
         DatabaseConfiguration outputConfig = new DatabaseConfiguration("classpath:database1.yml");
         Database inputDatabase = new DefaultMySqlDatabase(inputConfig);
