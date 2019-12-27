@@ -47,7 +47,10 @@ public class DefaultMySqlDatabase implements Database {
         String url = configuration.getUrl();
 
         if (!MapUtils.isEmpty(configuration.getAttributes())) {
-            url += "?" + toQueryString(wrapToQueryStringMap(configuration.getAttributes()));
+            if(!url.contains("?"))
+                url += "?" + toQueryString(wrapToQueryStringMap(configuration.getAttributes()));
+            else
+                url += "&" + toQueryString(wrapToQueryStringMap(configuration.getAttributes()));
         }
 
         try {
@@ -102,7 +105,6 @@ public class DefaultMySqlDatabase implements Database {
     }
 
     public static void main(String[] args) {
-        DatabaseConfiguration.withSpringApplication("new").attribute("test", true);
 
     }
 }

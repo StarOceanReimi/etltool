@@ -17,10 +17,7 @@ import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Properties;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -170,7 +167,7 @@ public class DatabaseConfiguration {
     }
 
     private static final Pattern DB_URL_PATTERN = Pattern.compile(
-            "^(?<protocal>.*)://(?<host>.*):(?<port>.*)/(?<database>[^?]*)\\??(?<attributes>.*)?");
+            "^(?<protocal>.+)://(?<host>.+):(?<port>\\d+)/(?<database>[^?]*)\\??(?<attributes>.*)?");
 
     private String databaseName;
 
@@ -205,6 +202,9 @@ public class DatabaseConfiguration {
         builder.append(replacement);
         builder.append(ori.substring(matcher.end(groupName)));
         return builder.toString();
+    }
+
+    public static void main(String[] args) {
     }
 
 }

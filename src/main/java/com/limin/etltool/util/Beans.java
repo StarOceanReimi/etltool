@@ -5,6 +5,7 @@ import com.google.common.base.Stopwatch;
 import com.google.common.collect.Maps;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import lombok.val;
 import net.sf.cglib.beans.BeanCopier;
 import net.sf.cglib.core.Converter;
@@ -47,6 +48,7 @@ public abstract class Beans {
     public static class FastBeanOperation {
 
         private static final Object[] EMPTY_ARGS = new Object[0];
+        private static final Class<?>[] EMPTY_PARAMS = new Class[0];
 
         private final Class<?> clazz;
         private final Map<String, Method> propertiesReadCache;
@@ -64,7 +66,7 @@ public abstract class Beans {
             for (PropertyDescriptor descriptor : descriptors) {
                 if(descriptor.getDisplayName().equals("class")) continue;
                 propertiesReadCache.put(descriptor.getDisplayName(), descriptor.getReadMethod());
-                propertiesWriteCache.put(descriptor.getDisplayName(), descriptor.getReadMethod());
+                propertiesWriteCache.put(descriptor.getDisplayName(), descriptor.getWriteMethod());
             }
         }
 
@@ -129,6 +131,7 @@ public abstract class Beans {
     }
 
     @AllArgsConstructor
+    @NoArgsConstructor
     @Data
     public static class TestBean1 {
         private Number id;
@@ -195,7 +198,12 @@ public abstract class Beans {
 
     public static void main(String[] args) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
 
-        fastMethodPerformanceTest();
+//        fastMethodPerformanceTest();
+        TestBean1 bean1 = new TestBean1(1L, "QL");
+
+        FastBeanOperation operation = Beans.getFastBeanOperation(TestBean1.class);
+        Map<String, Object> map = operation.describeAsMap(bean1);
+        System.out.println(operation.populateBean(map));
 
     }
 
