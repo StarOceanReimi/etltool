@@ -34,6 +34,8 @@ public class ColumnMapping<T1, T2> extends CachedBeanOperationTransform<Stream<T
 
     private Set<String> extraColumnNames = Sets.newHashSet();
 
+    private Set<String> dropColumnNames = Sets.newHashSet();
+
     private final Supplier<T2> outputBeanSupplier;
 
     private boolean retainUnmapped = true;
@@ -60,6 +62,11 @@ public class ColumnMapping<T1, T2> extends CachedBeanOperationTransform<Stream<T
         return this;
     }
 
+    public ColumnMapping<T1, T2> dropColumnForMapBean(String columnInStream) {
+        dropColumnNames.add(columnInStream);
+        return this;
+    }
+
     public ColumnMapping<T1, T2> addMapping(String inputColumn, String outputColumn) {
         columnMapping.put(inputColumn, outputColumn);
         return this;
@@ -70,6 +77,7 @@ public class ColumnMapping<T1, T2> extends CachedBeanOperationTransform<Stream<T
         if(target instanceof Map) {
             Map<String, Object> outputMap = (Map<String, Object>) target;
             outputMap.put(name, value);
+            dropColumnNames.forEach(outputMap::remove);
             extraColumnNames.forEach(c -> outputMap.put(c, null));
         } else {
             Beans.FastBeanOperation targetOp = loadOperation(target);

@@ -19,10 +19,7 @@ import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Properties;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -50,7 +47,7 @@ public class DatabaseConfiguration {
 
     private String driverClassName;
 
-    private final Map<String, Object> attributes = Maps.newHashMap();
+    private Map<String, Object> attributes = Maps.newHashMap();
 
     private static final String DEFAULT_LOCATION = "classpath:database.yml";
 
@@ -76,6 +73,11 @@ public class DatabaseConfiguration {
         checkNotNull(cl, "classLoader cannot be null");
         checkArgument(!Strings.isNullOrEmpty(databaseName), "database name cannot be empty");
         return withClassloader(cl, "etl-db/input").databaseName(databaseName);
+    }
+
+    public static DatabaseConfiguration output(ClassLoader cl) {
+        checkNotNull(cl, "classLoader cannot be null");
+        return withClassloader(cl, "etl-db/output");
     }
 
     public static DatabaseConfiguration output(ClassLoader cl, String databaseName) {
@@ -131,11 +133,15 @@ public class DatabaseConfiguration {
 
     private static String findActiveProfile(ClassLoader cl) {
         String active = System.getProperty("spring.profiles.active");
+        log.info("system spring profiles active: {}", active);
         if(!Strings.isNullOrEmpty(active)) return active;
         InputStream stream = cl.getResourceAsStream("application.yml");
+        log.info("classloader found application.yml stream: {}", stream != null);
         if(stream == null) return "dev";
         Properties properties = YAML.loadAs(stream, Properties.class);
-        return properties.getProperty("spring.profiles.active", "dev");
+        String profile = getProperty(properties, "spring.profiles.active");
+        log.info("spring application yml profile: {}", profile);
+        return ofNullable(profile).orElse("dev");
     }
 
     public DatabaseConfiguration() {
@@ -143,11 +149,12 @@ public class DatabaseConfiguration {
     }
 
     private void loadFromProperties(Properties properties) {
+        if(properties.isEmpty()) return;
         val descs = PropertyUtils.getPropertyDescriptors(getClass());
         for(val prop : descs) {
             if(prop.getDisplayName().equals("class")) continue;
-            if(prop.getDisplayName().equals("attributes")) continue;
             Object propVal = properties.get(prop.getDisplayName());
+            if(Objects.isNull(propVal)) continue;
             Method writer = prop.getWriteMethod();
             try {
                 writer.invoke(this, propVal);
@@ -159,6 +166,10 @@ public class DatabaseConfiguration {
 
     public DatabaseConfiguration(Properties properties) {
         loadFromProperties(properties);
+    }
+
+    public static DatabaseConfiguration newInstance() {
+        return new DatabaseConfiguration(new Properties());
     }
 
     public DatabaseConfiguration(String propertyFileLocation) {
@@ -203,8 +214,16 @@ public class DatabaseConfiguration {
     public void setUrl(String url) {
         this.url = url;
         Matcher matcher = DB_URL_PATTERN.matcher(url);
-        if(matcher.find())
+        if(matcher.find()) {
             databaseName = matcher.group("database");
+            String attributes = matcher.group("attributes");
+            if(!Strings.isNullOrEmpty(attributes)) {
+                Map<String, String> atts = Splitter.on("&")
+                        .trimResults().withKeyValueSeparator("=").split(attributes);
+                this.attributes.putAll(atts);
+                this.url = url.substring(0, url.indexOf('?'));
+            }
+        }
     }
 
     public void setDatabaseName(String databaseName) {
@@ -234,6 +253,13 @@ public class DatabaseConfiguration {
     }
 
     public static void main(String[] args) {
+
+        DatabaseConfiguration config = new DatabaseConfiguration();
+        System.out.println(config.getUrl());
+        System.out.println(config.getAttributes());
+        config.attribute("useSSL", true);
+        System.out.println(config.getAttributes());
+        System.out.println(config);
 
 
     }
