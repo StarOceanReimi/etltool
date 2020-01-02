@@ -19,7 +19,10 @@ import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import java.util.*;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -135,13 +138,16 @@ public class DatabaseConfiguration {
         String active = System.getProperty("spring.profiles.active");
         log.info("system spring profiles active: {}", active);
         if(!Strings.isNullOrEmpty(active)) return active;
+        active = System.getenv("SPRING_PROFILES_ACTIVE");
+        log.info("env spring profiles active: {}", active);
+        if(!Strings.isNullOrEmpty(active)) return active;
         InputStream stream = cl.getResourceAsStream("application.yml");
         log.info("classloader found application.yml stream: {}", stream != null);
-        if(stream == null) return "dev";
+        if(stream == null) return "prod";
         Properties properties = YAML.loadAs(stream, Properties.class);
         String profile = getProperty(properties, "spring.profiles.active");
         log.info("spring application yml profile: {}", profile);
-        return ofNullable(profile).orElse("dev");
+        return ofNullable(profile).orElse("prod");
     }
 
     public DatabaseConfiguration() {
