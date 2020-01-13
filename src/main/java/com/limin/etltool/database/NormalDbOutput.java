@@ -179,7 +179,8 @@ public class NormalDbOutput<T> extends AbstractDbOutput<T> {
     private boolean truncateTable(final String tableName) {
         AtomicBoolean flag = new AtomicBoolean();
         executeStatement((IntegerStatementHandler) statement -> {
-            boolean result = statement.execute(logFormat("TRUNCATE TABLE {}", tableName));
+//            boolean result = statement.execute(logFormat("TRUNCATE TABLE {}", tableName));
+            boolean result = statement.execute(logFormat("DELETE FROM {}", tableName));
             flag.set(result);
             return 0;
         }, (e) -> flag.set(false));
