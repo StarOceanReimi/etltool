@@ -1,15 +1,19 @@
 package com.limin.etltool.excel;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.limin.etltool.core.Batch;
 import com.limin.etltool.excel.transformer.RowTransformer;
 import com.limin.etltool.excel.transformer.RowTransformerFactory;
+import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.util.CellRangeAddress;
 
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 /**
  * <p>
@@ -27,13 +31,30 @@ class ExcelBatchObject<T> implements Batch<T> {
 
     private final Iterator<Row> rowIterator;
 
-    private final Class<T> targetClass;
+    private GeneralBeanExcelDescriber<T> describer;
 
-    public ExcelBatchObject(Sheet sheet, int batchSize, Class<T> targetClass) {
+    private Map<Cell, Cell> mergeContext;
+
+    public ExcelBatchObject(Sheet workingSheet,
+                            Iterator<Row> iterator,
+                            int batchSize,
+                            GeneralBeanExcelDescriber<T> describer) {
+        this.sheet = workingSheet;
+        this.rowIterator = iterator;
         this.batchSize = batchSize;
-        this.sheet = sheet;
-        this.rowIterator = sheet.iterator();
-        this.targetClass = targetClass;
+        this.describer = describer;
+        this.buildMergeContext();
+    }
+
+    private void buildMergeContext() {
+        mergeContext = Maps.newHashMap();
+        for (CellRangeAddress rangeAddress : sheet.getMergedRegions()) {
+            Cell valueCell = sheet.getRow(rangeAddress.getFirstRow()).getCell(rangeAddress.getFirstColumn());
+            rangeAddress.forEach(cellAddress -> {
+                Cell cell = sheet.getRow(cellAddress.getRow()).getCell(cellAddress.getColumn());
+                mergeContext.put(cell, valueCell);
+            });
+        }
     }
 
     @Override
@@ -46,13 +67,10 @@ class ExcelBatchObject<T> implements Batch<T> {
 
         List<T> result = Lists.newArrayList();
         int count = 0;
-
-        RowTransformer<T> transformer = RowTransformerFactory.getTransformer(targetClass);
-        while (rowIterator.hasNext() || count == 0 || count != batchSize) {
-            result.add(transformer.transform(rowIterator.next()));
+        while (rowIterator.hasNext() && (count == 0 || count != batchSize)) {
+            result.add(describer.newBean(rowIterator.next(), mergeContext));
             count++;
         }
-
         return result;
     }
 

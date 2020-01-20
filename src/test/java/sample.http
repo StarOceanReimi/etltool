@@ -1,0 +1,105 @@
+### FIND EXISTING INDEXES
+GET http://{{URL}}/_cat/indices?v
+Content-Type: application/json
+
+### PUT SETTINGS AND MAPPING
+PUT http://{{URL}}/my_multi_query_sample
+Content-Type: application/json
+
+{
+  "settings": {
+    "index": {
+      "number_of_replicas": 1,
+      "number_of_shards": 2
+    }
+  },
+  "mappings": {
+    "_doc": {
+      "properties": {
+        "user_id": {
+          "type": "integer"
+        },
+        "unit_id": {
+          "type": "integer"
+        },
+        "type": {
+          "type": "integer"
+        },
+        "name": {
+          "type": "text",
+          "fields": {
+            "raw": {
+              "type": "keyword"
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+### GET MAPPINGS
+GET http://{{URL}}/my_multi_query_sample/_mappings
+Content-Type: application/json
+
+
+### CREATE A SAMPLE INDEX
+POST http://{{URL}}/my_multi_query_sample/_doc/_bulk?refresh
+Content-Type: application/json
+
+< multi-query-bulk
+
+### DELETE INDEX
+DELETE http://{{URL}}/my_multi_query_sample
+Content-Type: application/json
+
+### SAMPLE SEARCH
+GET http://{{URL}}/my_multi_query_sample/_search
+Content-Type: application/json
+
+{
+  "size": 1,
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "function_score": {
+            "query": {
+              "match_phrase": {
+                "name": "试用"
+              }
+            },
+            "script_score": {
+              "script": {
+                "source": "if(doc['name.raw'].value.contains('2')) return 1.1; return 1"
+              }
+            }
+          }
+        },
+        {
+          "term": {
+            "type": 1
+          }
+        }
+      ]
+    }
+  },
+  "highlight": {
+    "fields": {
+      "name": {
+        "pre_tags": ["<b>"],
+        "post_tags": ["</b>"]
+      }
+    }
+  }
+}
+
+###
+
+
+
+
+
+
+
+

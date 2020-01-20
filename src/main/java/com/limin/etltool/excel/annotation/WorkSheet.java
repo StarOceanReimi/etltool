@@ -15,7 +15,7 @@ import java.lang.annotation.Target;
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})
-public @interface Sheet {
+public @interface WorkSheet {
 
     /**
      * 工作簿的序号
@@ -26,4 +26,14 @@ public @interface Sheet {
      * 工作簿的名称
      */
     String indexName() default "";
+
+    /**
+     * 工作簿表头开始开行数
+     */
+    int[] headerRange() default { 0, 1 };
+
+    /**
+     * 工作簿数据区开始行数
+     */
+    int dataAreaStartRow() default 1;
 }

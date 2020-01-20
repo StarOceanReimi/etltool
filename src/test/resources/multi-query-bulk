@@ -1,0 +1,10 @@
+{ "index": { } }
+{ "user_id": 123, "type": 1, "name": "测试用户01", "unit_id": 345 }
+{ "index": { } }
+{ "unit_id": 345, "type": 2, "name": "测试组织01" }
+{ "index": { } }
+{ "user_id": 654, "type": 1, "name": "测试用户02", "unit_id": 675 }
+{ "index": { } }
+{ "unit_id": 675, "type": 2, "name": "测试组织02" }
+
+
