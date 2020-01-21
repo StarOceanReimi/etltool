@@ -108,9 +108,8 @@ public class ExcelInput<T> implements BatchInput<T> {
 
     public static void main(String[] args) throws IOException, EtlException {
 
-        InputStream stream = Files.newInputStream(
-                Paths.get("C:\\Users\\WHRDD-PC104\\Downloads\\test.xlsx"), StandardOpenOption.READ);
         val sw = Stopwatch.createStarted();
+        InputStream stream = Files.newInputStream(Paths.get("c:\\users\\reimidesktop\\test.xlsx"), StandardOpenOption.READ);
         val input = new ExcelInput<ExcelBean>(stream) {};
         input.readCollection();
         System.out.println(sw.stop());
