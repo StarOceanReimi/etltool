@@ -32,8 +32,4 @@ public @interface WorkSheet {
      */
     int[] headerRange() default { 0, 1 };
 
-    /**
-     * 工作簿数据区开始行数
-     */
-    int dataAreaStartRow() default 1;
 }

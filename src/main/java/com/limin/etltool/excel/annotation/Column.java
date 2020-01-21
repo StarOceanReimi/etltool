@@ -21,4 +21,6 @@ public @interface Column {
      * 字段对应的列名如: A B C等
      */
     String value();
+
+    HeaderInfo[] header() default {};
 }

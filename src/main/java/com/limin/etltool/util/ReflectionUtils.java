@@ -2,12 +2,11 @@ package com.limin.etltool.util;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.beanutils.PropertyUtils;
+import org.apache.poi.ss.formula.functions.T;
 
 import java.beans.PropertyDescriptor;
 import java.lang.annotation.Annotation;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
+import java.lang.reflect.*;
 
 /**
  * @author 邱理
@@ -16,6 +15,17 @@ import java.lang.reflect.Method;
  */
 @Slf4j
 public abstract class ReflectionUtils {
+
+    @SuppressWarnings("unchecked")
+    public static <T> Class<T> findGenericTypeFromSuperClass(Class<?> clazz) {
+        Type superClass = clazz.getGenericSuperclass();
+        if(superClass instanceof ParameterizedType) {
+            Type subType = ((ParameterizedType) superClass).getActualTypeArguments()[0];
+            if(subType instanceof Class) return (Class<T>) subType;
+        }
+        throw Exceptions.inform("cannot infer generic class from {}", superClass);
+    }
+
 
     public static String findPropertyNameWithAnnotation(Object bean, Class<? extends Annotation> annotationClass) {
         Object o = findPropertyWithAnnotation(bean, annotationClass);

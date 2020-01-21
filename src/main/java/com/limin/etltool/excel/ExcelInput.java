@@ -1,10 +1,12 @@
 package com.limin.etltool.excel;
 
+import com.google.common.base.Stopwatch;
 import com.google.common.base.Strings;
 import com.limin.etltool.core.Batch;
 import com.limin.etltool.core.BatchInput;
 import com.limin.etltool.core.EtlException;
 import com.limin.etltool.excel.annotation.Column;
+import com.limin.etltool.excel.annotation.HeaderInfo;
 import com.limin.etltool.excel.annotation.WorkSheet;
 import com.limin.etltool.util.Exceptions;
 import com.limin.etltool.util.JavaTimeConverters;
@@ -20,14 +22,14 @@ import org.apache.poi.ss.usermodel.WorkbookFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Iterator;
+
+import static com.limin.etltool.util.ReflectionUtils.findGenericTypeFromSuperClass;
 
 /**
  * <p>
@@ -54,19 +56,8 @@ public class ExcelInput<T> implements BatchInput<T> {
         } catch (IOException e) {
             throw Exceptions.propagate(e);
         }
-        this.describer = new GeneralBeanExcelDescriber<>(findClass());
+        this.describer = new GeneralBeanExcelDescriber<>(findGenericTypeFromSuperClass(getClass()));
     }
-
-    @SuppressWarnings("unchecked")
-    private Class<T> findClass() {
-        Type superClass = getClass().getGenericSuperclass();
-        if(superClass instanceof ParameterizedType) {
-            Type subType = ((ParameterizedType) superClass).getActualTypeArguments()[0];
-            if(subType instanceof Class) return (Class<T>) subType;
-        }
-        throw Exceptions.inform("cannot infer generic class from {}", superClass);
-    }
-
 
     @Override
     public Batch<T> readInBatch(int batchSize) throws EtlException {
@@ -104,24 +95,25 @@ public class ExcelInput<T> implements BatchInput<T> {
     @EqualsAndHashCode(callSuper = true)
     public static class ExcelBean extends ParentBean {
 
-        @Column("A")
+        @Column(value = "A", header = @HeaderInfo("名称"))
         private String name;
 
-        @Column("B")
-        private LocalDateTime time;
-
         @Column("C")
+        private LocalDate time;
+
+        @Column("B")
         private String text;
 
     }
 
     public static void main(String[] args) throws IOException, EtlException {
 
-        InputStream stream = Files.newInputStream(Paths.get("c:\\users\\reimidesktop\\test.xlsx"), StandardOpenOption.READ);
-
+        InputStream stream = Files.newInputStream(
+                Paths.get("C:\\Users\\WHRDD-PC104\\Downloads\\test.xlsx"), StandardOpenOption.READ);
+        val sw = Stopwatch.createStarted();
         val input = new ExcelInput<ExcelBean>(stream) {};
-
-        input.readCollection().forEach(System.out::println);
+        input.readCollection();
+        System.out.println(sw.stop());
 
     }
 }
