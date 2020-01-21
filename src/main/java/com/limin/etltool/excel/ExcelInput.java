@@ -10,26 +10,46 @@ import com.limin.etltool.excel.annotation.HeaderInfo;
 import com.limin.etltool.excel.annotation.WorkSheet;
 import com.limin.etltool.util.Exceptions;
 import com.limin.etltool.util.JavaTimeConverters;
+import javafx.scene.input.DataFormat;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.val;
 import org.apache.commons.beanutils.ConvertUtils;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.ss.usermodel.Workbook;
-import org.apache.poi.ss.usermodel.WorkbookFactory;
+import org.apache.poi.hssf.eventusermodel.HSSFRequest;
+import org.apache.poi.ooxml.util.SAXHelper;
+import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
+import org.apache.poi.openxml4j.exceptions.OpenXML4JException;
+import org.apache.poi.openxml4j.opc.OPCPackage;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.ss.util.CellAddress;
+import org.apache.poi.xssf.eventusermodel.XSSFBReader;
+import org.apache.poi.xssf.eventusermodel.XSSFReader;
+import org.apache.poi.xssf.eventusermodel.XSSFSheetXMLHandler;
+import org.apache.poi.xssf.model.Comments;
+import org.apache.poi.xssf.model.CommentsTable;
+import org.apache.poi.xssf.model.StylesTable;
+import org.apache.poi.xssf.usermodel.*;
+import org.xml.sax.*;
 
+import javax.sql.rowset.spi.XmlReader;
+import javax.xml.parsers.ParserConfigurationException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.text.DecimalFormat;
+import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Date;
 import java.util.Iterator;
+import java.util.concurrent.TimeUnit;
 
 import static com.limin.etltool.util.ReflectionUtils.findGenericTypeFromSuperClass;
+import static com.limin.etltool.util.ReflectionUtils.findPropertyNameWithAnnotation;
+import static java.nio.file.StandardOpenOption.READ;
 
 /**
  * <p>
@@ -98,21 +118,42 @@ public class ExcelInput<T> implements BatchInput<T> {
         @Column(value = "A", header = @HeaderInfo("名称"))
         private String name;
 
-        @Column("C")
+        @Column("B")
         private LocalDate time;
 
-        @Column("B")
+        @Column("C")
         private String text;
 
     }
 
-    public static void main(String[] args) throws IOException, EtlException {
+    public static void main(String[] args) throws IOException, EtlException, ParserConfigurationException, OpenXML4JException {
 
+        InputStream stream = Files.newInputStream(Paths.get("c:\\users\\reimidesktop\\test.xlsx"), READ);
         val sw = Stopwatch.createStarted();
-        InputStream stream = Files.newInputStream(Paths.get("c:\\users\\reimidesktop\\test.xlsx"), StandardOpenOption.READ);
-        val input = new ExcelInput<ExcelBean>(stream) {};
-        input.readCollection();
+//        val input = new ExcelInput<ExcelBean>(stream) {};
+//        System.out.println(sw.stop());
+//        sw.reset();
+//        sw.start();
+//        System.out.println(input.readCollection().size());
+//        System.out.println(sw.stop());
+//        sw.reset();
+//        sw.start();
+
+        OPCPackage opcPackage = OPCPackage.open(stream);
+        XSSFReader reader = new XSSFReader(opcPackage);
+        ExcelContentHandler handler = new ExcelContentHandler(reader, null);
+        val sheetIter = reader.getSheetsData();
         System.out.println(sw.stop());
+        try {
+            XMLReader xmlReader = SAXHelper.newXMLReader();
+            xmlReader.setContentHandler(handler);
+            sw.reset();
+            sw.start();
+            xmlReader.parse(new InputSource(sheetIter.next()));
+            System.out.println(sw.stop());
+        } catch (SAXException e) {
+            e.printStackTrace();
+        }
 
     }
 }
