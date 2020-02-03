@@ -5,50 +5,39 @@ import com.google.common.base.Strings;
 import com.limin.etltool.core.Batch;
 import com.limin.etltool.core.BatchInput;
 import com.limin.etltool.core.EtlException;
-import com.limin.etltool.excel.annotation.Column;
-import com.limin.etltool.excel.annotation.HeaderInfo;
-import com.limin.etltool.excel.annotation.WorkSheet;
+import com.limin.etltool.database.DatabaseAccessor;
+import com.limin.etltool.database.DatabaseConfiguration;
+import com.limin.etltool.database.NormalDbOutput;
+import com.limin.etltool.database.TableColumnAccessor;
+import com.limin.etltool.database.mysql.DefaultMySqlDatabase;
+import com.limin.etltool.excel.annotation.*;
+import com.limin.etltool.excel.util.CellStyles;
+import com.limin.etltool.excel.util.MergeCellValue;
+import com.limin.etltool.excel.util.SerialNoGenerator;
 import com.limin.etltool.util.Exceptions;
 import com.limin.etltool.util.JavaTimeConverters;
-import javafx.scene.input.DataFormat;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.val;
 import org.apache.commons.beanutils.ConvertUtils;
-import org.apache.poi.hssf.eventusermodel.HSSFRequest;
-import org.apache.poi.ooxml.util.SAXHelper;
-import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import org.apache.poi.openxml4j.exceptions.OpenXML4JException;
-import org.apache.poi.openxml4j.opc.OPCPackage;
-import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.apache.poi.ss.util.CellAddress;
-import org.apache.poi.xssf.eventusermodel.XSSFBReader;
-import org.apache.poi.xssf.eventusermodel.XSSFReader;
-import org.apache.poi.xssf.eventusermodel.XSSFSheetXMLHandler;
-import org.apache.poi.xssf.model.Comments;
-import org.apache.poi.xssf.model.CommentsTable;
-import org.apache.poi.xssf.model.StylesTable;
-import org.apache.poi.xssf.usermodel.*;
-import org.xml.sax.*;
 
-import javax.sql.rowset.spi.XmlReader;
 import javax.xml.parsers.ParserConfigurationException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
-import java.text.DecimalFormat;
-import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Date;
 import java.util.Iterator;
-import java.util.concurrent.TimeUnit;
 
 import static com.limin.etltool.util.ReflectionUtils.findGenericTypeFromSuperClass;
-import static com.limin.etltool.util.ReflectionUtils.findPropertyNameWithAnnotation;
 import static java.nio.file.StandardOpenOption.READ;
 
 /**
@@ -104,25 +93,54 @@ public class ExcelInput<T> implements BatchInput<T> {
     @Data
     public static class ParentBean {
 
-        @Column("E")
-        private Long id;
+        @Column(value = "E", header = @HeaderInfo(value = "PID", address = "E1:E2"))
+        private Long pid;
 
     }
 
-    @WorkSheet
+    @WorkSheet(
+        headerDefaultStyle = { CellStyles.CenterAlignmentStyle.class },
+        headerRange = {0, 2}
+    )
     @Data
     @ToString(callSuper = true)
     @EqualsAndHashCode(callSuper = true)
     public static class ExcelBean extends ParentBean {
 
-        @Column(value = "A", header = @HeaderInfo("名称"))
+        @Column(value = "F",
+                header = @HeaderInfo(value = "序号",
+                        address = "F1:F2"),
+                cellValue = @Value(generator = SerialNoGenerator.class))
+        private Integer serialNo;
+
+        @Column(value = "A",
+                header = @HeaderInfo( value = "名称", address = "A1:A2" ))
         private String name;
 
-        @Column("B")
+        @Column(value = "B",
+                header = @HeaderInfo(
+                    value = "TIME",
+                    address = "B1:B2",
+                    headerCellStyle = {
+                        CellStyles.WiderLengthStyle.class
+                    }
+                ))
         private LocalDate time;
 
-        @Column("C")
+        @Column(value = "C",
+                valueCellStyle = CellStyles.CenterAlignmentStyle.class,
+                header = {
+                    @HeaderInfo(value = "文本", address = "C1:D1"),
+                    @HeaderInfo(value = "文本1", address = "C2")
+                }
+        )
         private String text;
+
+        @Column(value = "D",
+                cellValue = @Value(generator = MergeCellValue.class),
+                header =  @HeaderInfo(value = "文本D", address = "D2")
+        )
+        private String testD;
 
     }
 
@@ -130,30 +148,33 @@ public class ExcelInput<T> implements BatchInput<T> {
 
         InputStream stream = Files.newInputStream(Paths.get("c:\\users\\reimidesktop\\test.xlsx"), READ);
         val sw = Stopwatch.createStarted();
-//        val input = new ExcelInput<ExcelBean>(stream) {};
-//        System.out.println(sw.stop());
-//        sw.reset();
-//        sw.start();
-//        System.out.println(input.readCollection().size());
-//        System.out.println(sw.stop());
+        val input = new ExcelInput<ExcelBean>(stream) {};
+
+        DatabaseConfiguration configuration = new DatabaseConfiguration();
+        DatabaseAccessor accessor = new TableColumnAccessor(TableColumnAccessor.SqlType.INSERT, "test_bean");
+        val output = new NormalDbOutput<ExcelBean>(new DefaultMySqlDatabase(configuration), accessor) {};
+        output.setCreateTableIfNotExists(true);
+        output.writeCollection(input.readCollection());
+
+        System.out.println(sw.stop());
 //        sw.reset();
 //        sw.start();
 
-        OPCPackage opcPackage = OPCPackage.open(stream);
-        XSSFReader reader = new XSSFReader(opcPackage);
-        ExcelContentHandler handler = new ExcelContentHandler(reader, null);
-        val sheetIter = reader.getSheetsData();
-        System.out.println(sw.stop());
-        try {
-            XMLReader xmlReader = SAXHelper.newXMLReader();
-            xmlReader.setContentHandler(handler);
-            sw.reset();
-            sw.start();
-            xmlReader.parse(new InputSource(sheetIter.next()));
-            System.out.println(sw.stop());
-        } catch (SAXException e) {
-            e.printStackTrace();
-        }
+//        OPCPackage opcPackage = OPCPackage.open(stream);
+//        XSSFReader reader = new XSSFReader(opcPackage);
+//        ExcelContentHandler handler = new ExcelContentHandler(reader, null);
+//        val sheetIter = reader.getSheetsData();
+//        System.out.println(sw.stop());
+//        try {
+//            XMLReader xmlReader = SAXHelper.newXMLReader();
+//            xmlReader.setContentHandler(handler);
+//            sw.reset();
+//            sw.start();
+//            xmlReader.parse(new InputSource(sheetIter.next()));
+//            System.out.println(sw.stop());
+//        } catch (SAXException e) {
+//            e.printStackTrace();
+//        }
 
     }
 }

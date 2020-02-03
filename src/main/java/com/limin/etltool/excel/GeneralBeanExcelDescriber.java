@@ -1,16 +1,18 @@
 package com.limin.etltool.excel;
 
+import com.google.common.base.Strings;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-import com.limin.etltool.excel.annotation.Column;
-import com.limin.etltool.excel.annotation.HeaderInfo;
-import com.limin.etltool.excel.annotation.WorkSheet;
+import com.limin.etltool.excel.annotation.*;
 import com.limin.etltool.util.Exceptions;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.beanutils.ConstructorUtils;
 import org.apache.commons.beanutils.ConvertUtils;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellAddress;
 import org.apache.poi.ss.util.CellRangeAddress;
@@ -36,11 +38,16 @@ import static java.util.Optional.ofNullable;
 @Slf4j
 class GeneralBeanExcelDescriber<T> {
 
+    private static final String LONG_DATE_FORMAT = "yyyy-MM-dd HH:mm:ss";
+    private static final String SHORT_DATE_FORMAT = "yyyy-MM-dd";
+
     private final Set<ClassDataMeta> metaSet;
 
     private final Constructor<T> instanceCtor;
 
     private final WorkSheetInfo workSheetInfo;
+
+    private final Cache<Class<?>, Object> classCache = CacheBuilder.newBuilder().build();
 
     GeneralBeanExcelDescriber(Class<T> clazz) {
         Objects.requireNonNull(clazz);
@@ -49,7 +56,7 @@ class GeneralBeanExcelDescriber<T> {
             throw Exceptions.inform("Class {} must have a no args constructor", clazz.getSimpleName());
         workSheetInfo = new WorkSheetInfo();
         workSheetInfo.from(clazz.getAnnotation(WorkSheet.class));
-        metaSet = Sets.newHashSet();
+        metaSet = Sets.newTreeSet();
         traverseClassToFindFields(clazz);
     }
 
@@ -98,6 +105,8 @@ class GeneralBeanExcelDescriber<T> {
         private int headerEndRow   = 0;
         private String sheetName   = "";
         private int sheetIndex     = 0;
+        private final Set<CellStyleSetter> headerDefaultSetter = Sets.newHashSet();
+        private final Set<CellStyleSetter> valueDefaultSetter = Sets.newHashSet();
 
         private void from(WorkSheet sheetInfo) {
             if(sheetInfo == null) return;
@@ -106,12 +115,36 @@ class GeneralBeanExcelDescriber<T> {
             headerEndRow   = headerRange[1];
             sheetName      = sheetInfo.indexName();
             sheetIndex     = sheetInfo.value();
+            newStyleSetters(headerDefaultSetter, sheetInfo.headerDefaultStyle());
+            newStyleSetters(valueDefaultSetter, sheetInfo.valueDefaultStyle());
         }
 
     }
 
+    private void newStyleSetters(Set<CellStyleSetter> container, Class<? extends CellStyleSetter>[] styleSetter) {
+        for (Class<? extends CellStyleSetter> setterClass : styleSetter) {
+            Object setter = classCache.getIfPresent(setterClass);
+            if(setter == null) {
+                setter = newInstance(setterClass);
+                if(setter != null)
+                    classCache.put(setterClass, setter);
+            }
+            if(setter != null) {
+                container.add((CellStyleSetter) setter);
+            }
+        }
+    }
+
+    private Object newInstance(Class<?> clazz) {
+        try {
+            return clazz.newInstance();
+        } catch (InstantiationException | IllegalAccessException e) {
+            return null;
+        }
+    }
+
     @EqualsAndHashCode
-    class ClassDataMeta {
+    class ClassDataMeta implements Comparable<ClassDataMeta> {
 
         private int columnIdx;
 
@@ -119,13 +152,31 @@ class GeneralBeanExcelDescriber<T> {
 
         private Map<CellAddress, String> headerMemo;
 
+        private Map<CellAddress, Set<CellStyleSetter>> headerStyleMemo;
+
         private Set<CellRangeAddress> tobeMerged;
+
+        private Set<CellStyleSetter> valueStyleSetter;
+
+        private ValueGenerator valueGenerator;
+
+        private String constantValue;
+
+        private String dataFormat;
 
         ClassDataMeta(Field field, Column column) {
             this.columnIdx = indexStringValue(column.value()) - 1;
             this.field = field;
             this.headerMemo = Maps.newHashMap();
+            this.headerStyleMemo = Maps.newHashMap();
             this.tobeMerged = Sets.newHashSet();
+            Value value = column.cellValue();
+            constantValue = value.constant();
+            valueGenerator = value.generator().isInterface() ? null : (ValueGenerator) newInstance(value.generator());
+            valueStyleSetter = Sets.newHashSet();
+            valueStyleSetter.addAll(workSheetInfo.valueDefaultSetter);
+            newStyleSetters(valueStyleSetter, column.valueCellStyle());
+            dataFormat = column.dataFormat();
             parseHeaderInfo(column.header());
         }
 
@@ -140,15 +191,21 @@ class GeneralBeanExcelDescriber<T> {
 
             for (HeaderInfo info : headerInfo) {
                 CellRangeAddress address = CellRangeAddress.valueOf(info.address());
-                if(address.isFullColumnRange() || address.getNumberOfCells() > 1) {
-                    CellAddress cellAddress =
-                            new CellAddress(workSheetInfo.headerStartRow, columnIdx);
-                    headerMemo.put(cellAddress, info.value());
-                } else {
-                    CellAddress cellAddress =
-                            new CellAddress(address.getFirstRow(), address.getFirstColumn());
-                    headerMemo.put(cellAddress, info.value());
+                CellAddress realAddress;
+                if(address.isFullColumnRange()) {
+                    realAddress = new CellAddress(workSheetInfo.headerStartRow, columnIdx);
+                } else if (address.getNumberOfCells() > 1) {
+                    realAddress = new CellAddress(address.getFirstRow(), address.getFirstColumn());
                     tobeMerged.add(address);
+                } else {
+                    realAddress = new CellAddress(address.getFirstRow(), address.getFirstColumn());
+                }
+                headerMemo.put(realAddress, info.value());
+                if(!headerStyleMemo.containsKey(realAddress)) {
+                    Set<CellStyleSetter> set = Sets.newHashSet();
+                    set.addAll(workSheetInfo.headerDefaultSetter);
+                    newStyleSetters(set, info.headerCellStyle());
+                    headerStyleMemo.put(realAddress, set);
                 }
             }
         }
@@ -162,51 +219,73 @@ class GeneralBeanExcelDescriber<T> {
             Cell cell = headerRow.createCell(columnIdx);
             if(headerMemo.containsKey(cell.getAddress())) {
                 String value = headerMemo.get(cell.getAddress());
+                Set<CellStyleSetter> headerStyleSetter = headerStyleMemo.get(cell.getAddress());
+                if(CollectionUtils.isNotEmpty(headerStyleSetter)) {
+                    CellStyle style = createStyle(cell);
+                    headerStyleSetter.forEach(setter -> setter.applyStyle(cell, style));
+                    cell.setCellStyle(style);
+                }
                 cell.setCellValue(value);
             }
         }
 
-        private void createDateStyle(Cell cell, String dateFormat) {
+        private CellStyle createStyle(Cell cell) {
             Workbook wb = cell.getSheet().getWorkbook();
-            CellStyle style = wb.createCellStyle();
-            DataFormat format = wb.createDataFormat();
-            style.setDataFormat(format.getFormat(dateFormat));
-            cell.setCellStyle(style);
+            return wb.createCellStyle();
         }
+
 
         void writeValue(Row row, T bean) {
             try {
                 field.setAccessible(true);
-                Object value = field.get(bean);
+                String df = Strings.isNullOrEmpty(dataFormat) ? null : dataFormat;
+                Cell cell;
+                Object defaultValue = null;
+                if(!Strings.isNullOrEmpty(constantValue)) {
+                    defaultValue = constantValue;
+                } else if(valueGenerator != null) {
+                    defaultValue = valueGenerator.value(row.getSheet(), row.getRowNum(), columnIdx);
+                }
+                Object value = ofNullable(defaultValue).orElse(field.get(bean));
                 if(value instanceof Number) {
-                    Cell cell = row.createCell(columnIdx, CellType.NUMERIC);
+                    cell = row.createCell(columnIdx, CellType.NUMERIC);
                     cell.setCellValue(((Number) value).doubleValue());
                 } else if(value instanceof CharSequence) {
-                    Cell cell = row.createCell(columnIdx, CellType.STRING);
+                    cell = row.createCell(columnIdx, CellType.STRING);
                     cell.setCellValue((String) value);
                 } else if(value instanceof Boolean) {
-                    Cell cell = row.createCell(columnIdx, CellType.BOOLEAN);
+                    cell = row.createCell(columnIdx, CellType.BOOLEAN);
                     cell.setCellValue((Boolean) value);
                 } else if(value instanceof Date) {
-                    Cell cell = row.createCell(columnIdx, CellType.STRING);
-                    createDateStyle(cell, "yyyy-MM-dd HH:mm:ss");
+                    cell = row.createCell(columnIdx, CellType.STRING);
+                    df = ofNullable(df).orElse(LONG_DATE_FORMAT);
                     cell.setCellValue((Date) value);
                 } else if(value instanceof Calendar) {
-                    Cell cell = row.createCell(columnIdx, CellType.STRING);
-                    createDateStyle(cell, "yyyy-MM-dd HH:mm:ss");
+                    cell = row.createCell(columnIdx, CellType.STRING);
+                    df = ofNullable(df).orElse(LONG_DATE_FORMAT);
                     cell.setCellValue((Calendar) value);
                 } else if(value instanceof LocalDateTime) {
-                    Cell cell = row.createCell(columnIdx, CellType.STRING);
-                    createDateStyle(cell, "yyyy-MM-dd HH:mm:ss");
+                    cell = row.createCell(columnIdx, CellType.STRING);
+                    df = ofNullable(df).orElse(LONG_DATE_FORMAT);
                     cell.setCellValue((LocalDateTime) value);
                 } else if(value instanceof LocalDate) {
-                    Cell cell = row.createCell(columnIdx, CellType.STRING);
-                    createDateStyle(cell, "yyyy-MM-dd");
+                    cell = row.createCell(columnIdx, CellType.STRING);
+                    df = ofNullable(df).orElse(SHORT_DATE_FORMAT);
                     cell.setCellValue(((LocalDate) value).atStartOfDay());
                 } else {
-                    Cell cell = row.createCell(columnIdx, CellType.STRING);
-                    ofNullable(value).map(Object::toString).ifPresent(cell::setCellValue);
+                    cell = row.createCell(columnIdx, CellType.STRING);
+                    if(value != ValueGenerator.BLANK_CELL) {
+                        ofNullable(value).map(Object::toString).ifPresent(cell::setCellValue);
+                    }
                 }
+                CellStyle style = createStyle(cell);
+                if(!valueStyleSetter.isEmpty())
+                    valueStyleSetter.forEach(setter -> setter.applyStyle(cell, style));
+                if(df != null) {
+                    DataFormat format = cell.getSheet().getWorkbook().createDataFormat();
+                    style.setDataFormat(format.getFormat(df));
+                }
+                cell.setCellStyle(style);
             } catch (IllegalAccessException e) {
                 log.warn("cannot access field: {}", field.getName());
             }
@@ -220,7 +299,9 @@ class GeneralBeanExcelDescriber<T> {
                 Class<?> type = field.getType();
                 Object value = null;
                 if(realCell.getCellType() == CellType.NUMERIC) {
-                    if(LocalDateTime.class.isAssignableFrom(type)) {
+                    if(LocalDate.class.isAssignableFrom(type)) {
+                        value = realCell.getLocalDateTimeCellValue().toLocalDate();
+                    } else if(LocalDateTime.class.isAssignableFrom(type)) {
                         value = realCell.getLocalDateTimeCellValue();
                     } else {
                         value = ConvertUtils.convert(realCell.getNumericCellValue(), type);
@@ -236,5 +317,12 @@ class GeneralBeanExcelDescriber<T> {
                 log.warn("cannot write field: {}", field.getName());
             }
         }
+
+        @Override
+        public int compareTo(ClassDataMeta o) {
+            return Integer.compare(columnIdx, o.columnIdx);
+        }
     }
+
+
 }

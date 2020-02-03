@@ -2,10 +2,12 @@ package com.limin.etltool.database.mysql;
 
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
+import com.limin.etltool.database.util.IdKey;
 import com.limin.etltool.util.ReflectionUtils;
 import org.apache.commons.beanutils.PropertyUtils;
 
 import java.beans.PropertyDescriptor;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
@@ -46,27 +48,39 @@ public abstract class ColumnDefinitionHelper {
         List<ColumnDefinition> defs = Lists.newArrayList();
         for(String propName : map.keySet()) {
             Object value = map.get(propName);
-            ColumnDefinition.ColumnType type = null;
+            ColumnDefinition.ColumnType type = guessFromName(propName);
+            if (type == null)
+                type = nameMapping.get(propName);
             if(value != null) {
                 type = guessFromType(value.getClass());
                 if(type == null)
                     type = typeMapping.get(value.getClass());
             }
-            if(type == null) {
-                type = guessFromName(propName);
-                if (type == null)
-                    type = nameMapping.get(propName);
-            }
             if(type == null)
                 throw inform("cannot determine type for property {} in map", propName);
+
             ColumnDefinition def = ColumnDefinition.builder()
                     .name(propName)
                     .type(type)
-                    .primaryKey(propName.equals("id"))
+                    .primaryKey(isPrimaryKey(propName, null))
                     .build();
             defs.add(def);
         }
         return defs;
+    }
+
+    private static boolean isPrimaryKey(String propName, Class<?> beanType) {
+
+        if("id".equalsIgnoreCase(propName)) return true;
+        if(beanType != null) {
+            try {
+                Field field = beanType.getDeclaredField(propName);
+                return field.isAnnotationPresent(IdKey.class);
+            } catch (NoSuchFieldException e) {
+                // swallow it
+            }
+        }
+        return false;
     }
 
     public static List<ColumnDefinition> fromClass(Class<?> clazz) {
@@ -77,15 +91,15 @@ public abstract class ColumnDefinitionHelper {
             String propName = descriptor.getDisplayName();
             if(propName.equals("class")) continue;
             Method read = descriptor.getReadMethod();
-            ColumnDefinition.ColumnType type = guessFromType(read.getReturnType());
-            if(type == null) type = guessFromName(propName);
+            ColumnDefinition.ColumnType type = guessFromName(propName);
+            if(type == null) type = guessFromType(read.getReturnType());
             if(type == null)
                 throw inform("cannot determine type for property {} in class {}", propName, clazz);
 
             ColumnDefinition def = ColumnDefinition.builder()
                     .name(propName)
                     .type(type)
-                    .primaryKey(propName.equals("id"))
+                    .primaryKey(isPrimaryKey(propName, clazz))
                     .build();
             defs.add(def);
         }

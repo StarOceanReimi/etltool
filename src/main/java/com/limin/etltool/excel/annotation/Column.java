@@ -23,4 +23,10 @@ public @interface Column {
     String value();
 
     HeaderInfo[] header() default {};
+
+    Value cellValue() default @Value;
+
+    String dataFormat() default "";
+
+    Class<? extends CellStyleSetter>[] valueCellStyle() default {};
 }

@@ -12,5 +12,7 @@ public @interface HeaderInfo {
 
     String address() default "";
 
+    Class<? extends CellStyleSetter>[] headerCellStyle() default {};
+
     String value();
 }

@@ -51,18 +51,19 @@ public class ExcelOutput<T> implements Output<T>, AutoCloseable {
         describer = new GeneralBeanExcelDescriber<>(findGenericTypeFromSuperClass(getClass()));
     }
 
-    @Override
-    public boolean writeCollection(Collection<T> dataCollection) throws EtlException {
+    public boolean writeCollection(Collection<T> dataCollection, String sheetName) throws EtlException {
 
         if(CollectionUtils.isEmpty(dataCollection)) return false;
 
         val sheetInfo = describer.getWorkSheetInfo();
 
         Sheet workingSheet;
-        if(Strings.isNullOrEmpty(sheetInfo.getSheetName()))
-            workingSheet = workbook.createSheet();
-        else
+        if(!Strings.isNullOrEmpty(sheetName))
+            workingSheet = workbook.createSheet(sheetName);
+        else if(!Strings.isNullOrEmpty(sheetInfo.getSheetName()))
             workingSheet = workbook.createSheet(sheetInfo.getSheetName());
+        else
+            workingSheet = workbook.createSheet();
 
         int headerLen = sheetInfo.getHeaderEndRow() - sheetInfo.getHeaderStartRow();
         int i, len;
@@ -87,25 +88,30 @@ public class ExcelOutput<T> implements Output<T>, AutoCloseable {
     }
 
     @Override
+    public boolean writeCollection(Collection<T> dataCollection) throws EtlException {
+        return writeCollection(dataCollection, null);
+    }
+
+    @Override
     public void close() throws Exception {
         workbook.close();
     }
 
     public static void main(String[] args) throws IOException, EtlException {
         OutputStream stream = Files.newOutputStream(Paths
-                .get("C:\\Users\\WHRDD-PC104\\Downloads\\test1.xlsx"), CREATE, TRUNCATE_EXISTING);
+                .get("C:\\Users\\reimidesktop\\test1.xlsx"), CREATE, TRUNCATE_EXISTING);
         val output = new ExcelOutput<ExcelInput.ExcelBean>(stream) {};
         val bean = new ExcelInput.ExcelBean();
         bean.setName("ASD");
         bean.setText("HAHA");
         bean.setTime(LocalDate.now());
-        bean.setId(123L);
+        bean.setPid(123L);
 
         val bean1 = new ExcelInput.ExcelBean();
         bean1.setName("GDFSSDG");
         bean1.setText("HAHA!!!");
         bean1.setTime(LocalDate.of(2019, 12, 7));
-        bean1.setId(122L);
+        bean1.setPid(122L);
         output.writeCollection(Arrays.asList(bean, bean1));
     }
 }

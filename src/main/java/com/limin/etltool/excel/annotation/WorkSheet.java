@@ -28,8 +28,11 @@ public @interface WorkSheet {
     String indexName() default "";
 
     /**
-     * 工作簿表头开始开行数
+     * 工作簿表头开始结束行数
      */
     int[] headerRange() default { 0, 1 };
 
+    Class<? extends CellStyleSetter>[] headerDefaultStyle() default {};
+
+    Class<? extends CellStyleSetter>[] valueDefaultStyle() default {};
 }
