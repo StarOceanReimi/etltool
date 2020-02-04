@@ -99,7 +99,10 @@ public class ExcelInput<T> implements BatchInput<T> {
     }
 
     @WorkSheet(
-        headerDefaultStyle = { CellStyles.CenterAlignmentStyle.class },
+        headerDefaultStyle = {
+            CellStyles.CenterAlignmentStyle.class,
+            CellStyles.FontBoldStyle.class
+        },
         headerRange = {0, 2}
     )
     @Data
@@ -108,13 +111,13 @@ public class ExcelInput<T> implements BatchInput<T> {
     public static class ExcelBean extends ParentBean {
 
         @Column(value = "F",
-                header = @HeaderInfo(value = "序号",
-                        address = "F1:F2"),
+                header = @HeaderInfo(value = "序号", address = "F1:F2"),
+                dataFormat = "0.00",
                 cellValue = @Value(generator = SerialNoGenerator.class))
         private Integer serialNo;
 
         @Column(value = "A",
-                header = @HeaderInfo( value = "名称", address = "A1:A2" ))
+                header = @HeaderInfo(value = "名称", address = "A1:A2" ))
         private String name;
 
         @Column(value = "B",

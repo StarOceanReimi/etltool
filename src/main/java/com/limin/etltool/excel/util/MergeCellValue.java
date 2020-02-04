@@ -2,20 +2,19 @@ package com.limin.etltool.excel.util;
 
 import com.limin.etltool.excel.annotation.ValueGenerator;
 import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.ss.util.CellAddress;
 import org.apache.poi.ss.util.CellRangeAddress;
+
+import static java.util.Optional.ofNullable;
 
 public class MergeCellValue implements ValueGenerator {
 
     @Override
-    public Object value(Sheet currentSheet, int row, int column) {
-        Cell previousCell = currentSheet.getRow(row).getCell(column-1);
-        CellAddress address = new CellAddress(row, column);
+    public Object value(Cell cell, Object data) {
+        Cell previousCell = cell.getRow().getCell(cell.getColumnIndex() - 1);
         CellRangeAddress addresses =
-                CellRangeAddress.valueOf(previousCell.getAddress() + ":" + address);
-        currentSheet.addMergedRegion(addresses);
-        previousCell.setCellValue(previousCell.getStringCellValue() + "_Hello");
+                CellRangeAddress.valueOf(previousCell.getAddress() + ":" + cell.getAddress());
+        cell.getSheet().addMergedRegion(addresses);
+        previousCell.setCellValue(previousCell.getStringCellValue() + ofNullable(data).orElse("_Hello"));
         return BLANK_CELL;
     }
 }

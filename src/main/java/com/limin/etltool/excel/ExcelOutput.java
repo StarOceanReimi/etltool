@@ -58,6 +58,7 @@ public class ExcelOutput<T> implements Output<T>, AutoCloseable {
         val sheetInfo = describer.getWorkSheetInfo();
 
         Sheet workingSheet;
+
         if(!Strings.isNullOrEmpty(sheetName))
             workingSheet = workbook.createSheet(sheetName);
         else if(!Strings.isNullOrEmpty(sheetInfo.getSheetName()))
@@ -77,13 +78,6 @@ public class ExcelOutput<T> implements Output<T>, AutoCloseable {
             describer.writeCell(row, bean);
         }
 
-        try {
-            workbook.write(outputStream);
-            outputStream.flush();
-        } catch (IOException e) {
-            throw Exceptions.propagate(e);
-        }
-
         return true;
     }
 
@@ -94,10 +88,16 @@ public class ExcelOutput<T> implements Output<T>, AutoCloseable {
 
     @Override
     public void close() throws Exception {
+        try {
+            workbook.write(outputStream);
+            outputStream.flush();
+        } catch (IOException e) {
+            throw Exceptions.propagate(e);
+        }
         workbook.close();
     }
 
-    public static void main(String[] args) throws IOException, EtlException {
+    public static void main(String[] args) throws Exception {
         OutputStream stream = Files.newOutputStream(Paths
                 .get("C:\\Users\\reimidesktop\\test1.xlsx"), CREATE, TRUNCATE_EXISTING);
         val output = new ExcelOutput<ExcelInput.ExcelBean>(stream) {};
@@ -112,6 +112,8 @@ public class ExcelOutput<T> implements Output<T>, AutoCloseable {
         bean1.setText("HAHA!!!");
         bean1.setTime(LocalDate.of(2019, 12, 7));
         bean1.setPid(122L);
-        output.writeCollection(Arrays.asList(bean, bean1));
+        output.writeCollection(Arrays.asList(bean, bean1),  "Hello1");
+        output.writeCollection(Arrays.asList(bean, bean1),  "Hello2");
+        output.close();
     }
 }

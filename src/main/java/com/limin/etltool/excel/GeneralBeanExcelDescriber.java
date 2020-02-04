@@ -212,10 +212,11 @@ class GeneralBeanExcelDescriber<T> {
 
         void writeHeader(Row headerRow) {
             //add merged area
-            if(!tobeMerged.isEmpty()) {
-                tobeMerged.forEach(headerRow.getSheet()::addMergedRegion);
-                tobeMerged.clear();
-            }
+            tobeMerged.forEach(addr -> {
+                if(!headerRow.getSheet().getMergedRegions().contains(addr)) {
+                    headerRow.getSheet().addMergedRegion(addr);
+                }
+            });
             Cell cell = headerRow.createCell(columnIdx);
             if(headerMemo.containsKey(cell.getAddress())) {
                 String value = headerMemo.get(cell.getAddress());
@@ -239,41 +240,39 @@ class GeneralBeanExcelDescriber<T> {
             try {
                 field.setAccessible(true);
                 String df = Strings.isNullOrEmpty(dataFormat) ? null : dataFormat;
-                Cell cell;
+                Cell cell = row.createCell(columnIdx);
                 Object defaultValue = null;
+                Object value = null;
                 if(!Strings.isNullOrEmpty(constantValue)) {
                     defaultValue = constantValue;
                 } else if(valueGenerator != null) {
-                    defaultValue = valueGenerator.value(row.getSheet(), row.getRowNum(), columnIdx);
+                    value = field.get(bean);
+                    defaultValue = valueGenerator.value(cell, value);
                 }
-                Object value = ofNullable(defaultValue).orElse(field.get(bean));
+                if(defaultValue != null) {
+                    value = defaultValue;
+                } else if(value == null) {
+                    value = field.get(bean);
+                }
                 if(value instanceof Number) {
-                    cell = row.createCell(columnIdx, CellType.NUMERIC);
                     cell.setCellValue(((Number) value).doubleValue());
                 } else if(value instanceof CharSequence) {
-                    cell = row.createCell(columnIdx, CellType.STRING);
                     cell.setCellValue((String) value);
                 } else if(value instanceof Boolean) {
-                    cell = row.createCell(columnIdx, CellType.BOOLEAN);
                     cell.setCellValue((Boolean) value);
                 } else if(value instanceof Date) {
-                    cell = row.createCell(columnIdx, CellType.STRING);
                     df = ofNullable(df).orElse(LONG_DATE_FORMAT);
                     cell.setCellValue((Date) value);
                 } else if(value instanceof Calendar) {
-                    cell = row.createCell(columnIdx, CellType.STRING);
                     df = ofNullable(df).orElse(LONG_DATE_FORMAT);
                     cell.setCellValue((Calendar) value);
                 } else if(value instanceof LocalDateTime) {
-                    cell = row.createCell(columnIdx, CellType.STRING);
                     df = ofNullable(df).orElse(LONG_DATE_FORMAT);
                     cell.setCellValue((LocalDateTime) value);
                 } else if(value instanceof LocalDate) {
-                    cell = row.createCell(columnIdx, CellType.STRING);
                     df = ofNullable(df).orElse(SHORT_DATE_FORMAT);
                     cell.setCellValue(((LocalDate) value).atStartOfDay());
                 } else {
-                    cell = row.createCell(columnIdx, CellType.STRING);
                     if(value != ValueGenerator.BLANK_CELL) {
                         ofNullable(value).map(Object::toString).ifPresent(cell::setCellValue);
                     }
