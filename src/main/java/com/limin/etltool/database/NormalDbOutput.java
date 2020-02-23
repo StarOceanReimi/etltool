@@ -20,12 +20,14 @@ import org.apache.commons.collections.CollectionUtils;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.limin.etltool.util.Exceptions.rethrow;
@@ -141,6 +143,14 @@ public class NormalDbOutput<T> extends AbstractDbOutput<T> {
                 defs = ColumnDefinitionHelper.fromClass(data.getClass());
             }
             checkArgument(!CollectionUtils.isEmpty(defs), "column defs cannot be empty.");
+            if(accessor instanceof TableColumnAccessor) {
+                List<String> columns = ((TableColumnAccessor) accessor).getColumns();
+                if(CollectionUtils.isNotEmpty(columns)) {
+                    defs = defs.stream()
+                            .filter(d -> columns.contains(d.getName()))
+                            .collect(Collectors.toList());
+                }
+            }
             database.createTable(tableName, null, defs);
         }
     }

@@ -3,6 +3,7 @@ package com.limin.etltool.database.mysql;
 import com.google.common.base.Strings;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.Getter;
 import org.apache.commons.collections.CollectionUtils;
 
 import java.math.BigDecimal;
@@ -19,6 +20,7 @@ import static java.util.Optional.ofNullable;
  * @description
  * @date 创建于 2019/12/19
  */
+@Getter
 @Builder
 public class ColumnDefinition {
 
