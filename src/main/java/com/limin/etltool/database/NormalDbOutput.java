@@ -20,7 +20,6 @@ import org.apache.commons.collections.CollectionUtils;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -53,6 +52,12 @@ public class NormalDbOutput<T> extends AbstractDbOutput<T> {
     private boolean truncateTableBeforeInsert = false;
 
     private boolean onlyTruncateInFirstTimeInBatch = true;
+
+    private ColumnDefinition.Index[] indexList;
+
+    public void setTableIndicesIfAutoCreateTable(ColumnDefinition.Index... indices) {
+        this.indexList = indices;
+    }
 
     public void setCreateTableIfNotExists(boolean createTableIfNotExists) {
         this.createTableIfNotExists = createTableIfNotExists;
@@ -142,6 +147,8 @@ public class NormalDbOutput<T> extends AbstractDbOutput<T> {
             } else {
                 defs = ColumnDefinitionHelper.fromClass(data.getClass());
             }
+            defs.forEach(d -> {
+            });
             checkArgument(!CollectionUtils.isEmpty(defs), "column defs cannot be empty.");
             if(accessor instanceof TableColumnAccessor) {
                 List<String> columns = ((TableColumnAccessor) accessor).getColumns();
@@ -151,7 +158,7 @@ public class NormalDbOutput<T> extends AbstractDbOutput<T> {
                             .collect(Collectors.toList());
                 }
             }
-            database.createTable(tableName, null, defs);
+            database.createTable(tableName, null, defs, indexList);
         }
     }
 

@@ -1,20 +1,22 @@
 package com.limin.etltool.database.mysql;
 
-import com.google.common.collect.Maps;
+import com.google.common.base.Strings;
 import com.limin.etltool.database.Database;
 import com.limin.etltool.database.DatabaseConfiguration;
 import com.limin.etltool.util.TemplateUtils;
 import lombok.extern.slf4j.Slf4j;
+import lombok.val;
 import org.apache.commons.collections.MapUtils;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
+import static com.limin.etltool.database.mysql.ColumnDefinition.*;
 import static com.limin.etltool.util.Exceptions.propagate;
 import static com.limin.etltool.util.Exceptions.rethrow;
 import static com.limin.etltool.util.QueryStringUtils.toQueryString;
@@ -62,16 +64,27 @@ public class DefaultMySqlDatabase implements Database {
         }
     }
 
-    private static final String COMMON_CREATE_TABLE_TPL = "CREATE TABLE {} ({}) {}";
-
     @Override
     public boolean createTable(String table, String tableComment, List<ColumnDefinition> defs) {
         String columnDefs = defs.stream().map(Object::toString).collect(Collectors.joining(","));
         String comment = ofNullable(tableComment).map(c -> "COMMENT '" + c + "'").orElse("");
         String ddl = TemplateUtils.logFormat(COMMON_CREATE_TABLE_TPL, table, columnDefs, comment);
+        return executeSQL(ddl);
+    }
 
+    private static final String COMMON_CREATE_TABLE_TPL = "CREATE TABLE {} ({}) {}";
+
+    @Override
+    public boolean createTable(String table, String tableComment, List<ColumnDefinition> defs, ColumnDefinition.Index[] indices) {
+        if(indices == null)
+            return createTable(table, tableComment, defs);
+        String columnDefs = defs.stream().map(Object::toString).collect(Collectors.joining(","));
+        String comment = ofNullable(tableComment).map(c -> "COMMENT '" + c + "'").orElse("");
+        String indexOption = Arrays.stream(indices).map(idx -> "index " + idx.toString())
+                .collect(Collectors.joining(","));
+        String body = columnDefs + (Strings.isNullOrEmpty(indexOption) ? "" : "," + indexOption);
+        String ddl = TemplateUtils.logFormat(COMMON_CREATE_TABLE_TPL, table, body, comment);
         log.info("DDL: {}", ddl);
-
         return executeSQL(ddl);
     }
 
@@ -107,6 +120,19 @@ public class DefaultMySqlDatabase implements Database {
     }
 
     public static void main(String[] args) {
+        ClassLoader cl = Thread.currentThread().getContextClassLoader();
+        DatabaseConfiguration configuration = new DatabaseConfiguration();
+        val id = ColumnDefinition.builder()
+                .name("id")
+                .type(BIGINT(20))
+                .build();
+
+        val name = ColumnDefinition.builder()
+                .name("name")
+                .type(VARCHAR(20))
+                .build();
+        new DefaultMySqlDatabase(configuration).createTable("test", "测试一下",
+                Arrays.asList(id, name));
 
     }
 }

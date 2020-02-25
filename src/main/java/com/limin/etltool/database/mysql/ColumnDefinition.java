@@ -96,6 +96,7 @@ public class ColumnDefinition {
 
 
     @AllArgsConstructor
+    @Getter
     public static class Index {
 
         private String name;

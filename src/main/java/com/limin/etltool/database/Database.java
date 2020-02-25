@@ -14,7 +14,12 @@ public interface Database {
 
     Connection getConnection();
 
-    boolean createTable(String table, String tableComment, List<ColumnDefinition> defs);
+    boolean createTable(String table, String tableComment,
+                        List<ColumnDefinition> defs);
+
+    boolean createTable(String table, String tableComment,
+                        List<ColumnDefinition> defs,
+                        ColumnDefinition.Index[] indices);
 
     boolean executeSQL(String ddl);
 
