@@ -293,6 +293,7 @@ class GeneralBeanExcelDescriber<T> {
         void setValue(Row row, Map<Cell, Cell> mergeContext, Object instance) {
 
             Cell cell = Objects.requireNonNull(row).getCell(columnIdx);
+            if(cell == null) return;
             Cell realCell = ofNullable(mergeContext.get(cell)).orElse(cell);
             try {
                 Class<?> type = field.getType();
