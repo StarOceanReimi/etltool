@@ -49,11 +49,14 @@ class GeneralBeanExcelDescriber<T> {
 
     private final Cache<Class<?>, Object> classCache = CacheBuilder.newBuilder().build();
 
-    GeneralBeanExcelDescriber(Class<T> clazz) {
+    private final Object outputContext;
+
+    GeneralBeanExcelDescriber(Class<T> clazz, Object outputContext) {
         Objects.requireNonNull(clazz);
         instanceCtor = ConstructorUtils.getAccessibleConstructor(clazz, new Class<?>[0]);
         if(instanceCtor == null)
             throw Exceptions.inform("Class {} must have a no args constructor", clazz.getSimpleName());
+        this.outputContext = outputContext;
         workSheetInfo = new WorkSheetInfo();
         workSheetInfo.from(clazz.getAnnotation(WorkSheet.class));
         metaSet = Sets.newTreeSet();
@@ -150,7 +153,7 @@ class GeneralBeanExcelDescriber<T> {
 
         private Field field;
 
-        private Map<CellAddress, String> headerMemo;
+        private Map<CellAddress, Object> headerMemo;
 
         private Map<CellAddress, Set<CellStyleSetter>> headerStyleMemo;
 
@@ -173,6 +176,8 @@ class GeneralBeanExcelDescriber<T> {
             Value value = column.cellValue();
             constantValue = value.constant();
             valueGenerator = value.generator().isInterface() ? null : (ValueGenerator) newInstance(value.generator());
+            if(valueGenerator != null)
+                valueGenerator.setContext(outputContext);
             valueStyleSetter = Sets.newHashSet();
             valueStyleSetter.addAll(workSheetInfo.valueDefaultSetter);
             newStyleSetters(valueStyleSetter, column.valueCellStyle());
@@ -200,9 +205,21 @@ class GeneralBeanExcelDescriber<T> {
                 } else {
                     realAddress = new CellAddress(address.getFirstRow(), address.getFirstColumn());
                 }
-                headerMemo.put(realAddress, info.value());
+                Object value = info.value();
+                if(Strings.isNullOrEmpty(String.valueOf(value))) {
+                    Value v = info.dynamicValue();
+                    value = v.constant();
+                    if(Strings.isNullOrEmpty(String.valueOf(value)) && !v.generator().isInterface()) {
+                        ValueGenerator gen = (ValueGenerator) newInstance(v.generator());
+                        if(gen != null) {
+                            gen.setContext(outputContext);
+                            value = gen;
+                        }
+                    }
+                }
+                headerMemo.put(realAddress, value);
                 if(!headerStyleMemo.containsKey(realAddress)) {
-                    Set<CellStyleSetter> set = Sets.newHashSet();
+                    Set<CellStyleSetter> set = Sets.newLinkedHashSet();
                     set.addAll(workSheetInfo.headerDefaultSetter);
                     newStyleSetters(set, info.headerCellStyle());
                     headerStyleMemo.put(realAddress, set);
@@ -219,14 +236,21 @@ class GeneralBeanExcelDescriber<T> {
             });
             Cell cell = headerRow.createCell(columnIdx);
             if(headerMemo.containsKey(cell.getAddress())) {
-                String value = headerMemo.get(cell.getAddress());
+                Object value = headerMemo.get(cell.getAddress());
                 Set<CellStyleSetter> headerStyleSetter = headerStyleMemo.get(cell.getAddress());
                 if(CollectionUtils.isNotEmpty(headerStyleSetter)) {
                     CellStyle style = createStyle(cell);
                     headerStyleSetter.forEach(setter -> setter.applyStyle(cell, style));
                     cell.setCellStyle(style);
                 }
-                cell.setCellValue(value);
+                if(value instanceof String) {
+                    cell.setCellValue((String) value);
+                } else if(value instanceof ValueGenerator) {
+                    Object retValue = ((ValueGenerator) value).value(cell, null);
+                    if(retValue == ValueGenerator.BLANK_CELL)
+                        throw Exceptions.inform("Header Cannot to be blank!");
+                    cell.setCellValue(String.valueOf(retValue));
+                }
             }
         }
 

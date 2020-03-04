@@ -22,11 +22,7 @@ import lombok.ToString;
 import lombok.val;
 import org.apache.commons.beanutils.ConvertUtils;
 import org.apache.poi.openxml4j.exceptions.OpenXML4JException;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.ss.usermodel.Workbook;
-import org.apache.poi.ss.usermodel.WorkbookFactory;
-import org.apache.poi.ss.util.CellAddress;
+import org.apache.poi.ss.usermodel.*;
 
 import javax.xml.parsers.ParserConfigurationException;
 import java.io.IOException;
@@ -65,7 +61,7 @@ public class ExcelInput<T> implements BatchInput<T> {
         } catch (IOException e) {
             throw Exceptions.propagate(e);
         }
-        this.describer = new GeneralBeanExcelDescriber<>(findGenericTypeFromSuperClass(getClass()));
+        this.describer = new GeneralBeanExcelDescriber<>(findGenericTypeFromSuperClass(getClass()), null);
     }
 
     @Override
@@ -87,15 +83,29 @@ public class ExcelInput<T> implements BatchInput<T> {
 
     protected void processingHeaderRow(Row row) {
 
-
     }
 
     @Data
     public static class ParentBean {
 
-        @Column(value = "E", header = @HeaderInfo(value = "PID", address = "E1:E2"))
+        @Column(value = "E", header = @HeaderInfo(value = "PID", address = "E3:E4"))
         private Long pid;
 
+    }
+
+    public static class CustomInformationGenerator implements ValueGenerator {
+
+        private Object context;
+
+        @Override
+        public Object value(Cell cell, Object data) {
+            return context;
+        }
+
+        @Override
+        public void setContext(Object context) {
+            this.context = context;
+        }
     }
 
     @WorkSheet(
@@ -103,7 +113,7 @@ public class ExcelInput<T> implements BatchInput<T> {
             CellStyles.CenterAlignmentStyle.class,
             CellStyles.FontBoldStyle.class
         },
-        headerRange = {0, 2}
+        headerRange = {0, 4}
     )
     @Data
     @ToString(callSuper = true)
@@ -111,19 +121,27 @@ public class ExcelInput<T> implements BatchInput<T> {
     public static class ExcelBean extends ParentBean {
 
         @Column(value = "F",
-                header = @HeaderInfo(value = "序号", address = "F1:F2"),
+                header = {
+                    @HeaderInfo(value = "序号", address = "F3:F4"),
+                },
                 dataFormat = "0.00",
                 cellValue = @Value(generator = SerialNoGenerator.class))
         private Integer serialNo;
 
         @Column(value = "A",
-                header = @HeaderInfo(value = "名称", address = "A1:A2" ))
+                header = {
+                    @HeaderInfo(value = "名称", address = "A3:A4" ),
+                    @HeaderInfo(value = "综合信息", address = "A1:F1", headerCellStyle = CellStyles.CenterAlignmentStyle.class),
+                    @HeaderInfo(address = "A2:F2",
+                            headerCellStyle = CellStyles.FontNormalStyle.class,
+                            dynamicValue = @Value(generator = CustomInformationGenerator.class))
+                })
         private String name;
 
         @Column(value = "B",
                 header = @HeaderInfo(
                     value = "TIME",
-                    address = "B1:B2",
+                    address = "B3:B4",
                     headerCellStyle = {
                         CellStyles.WiderLengthStyle.class
                     }
@@ -133,15 +151,15 @@ public class ExcelInput<T> implements BatchInput<T> {
         @Column(value = "C",
                 valueCellStyle = CellStyles.CenterAlignmentStyle.class,
                 header = {
-                    @HeaderInfo(value = "文本", address = "C1:D1"),
-                    @HeaderInfo(value = "文本1", address = "C2")
+                    @HeaderInfo(value = "文本", address = "C3:D3"),
+                    @HeaderInfo(value = "文本1", address = "C4")
                 }
         )
         private String text;
 
         @Column(value = "D",
                 cellValue = @Value(generator = MergeCellValue.class),
-                header =  @HeaderInfo(value = "文本D", address = "D2")
+                header =  @HeaderInfo(value = "文本D", address = "D4")
         )
         private String testD;
 

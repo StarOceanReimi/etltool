@@ -15,11 +15,9 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 
 import static com.limin.etltool.util.ReflectionUtils.findGenericTypeFromSuperClass;
 import static java.nio.file.StandardOpenOption.CREATE;
@@ -41,24 +39,26 @@ public class ExcelOutput<T> implements Output<T>, AutoCloseable {
 
     private final GeneralBeanExcelDescriber<T> describer;
 
+    private Object outputContext;
+
     protected ExcelOutput(OutputStream outputStream) {
+        this(outputStream, null);
+    }
+    protected ExcelOutput(OutputStream outputStream, Object outputContext) {
         this.outputStream = outputStream;
         try {
             workbook = WorkbookFactory.create(true);
         } catch (IOException e) {
             throw Exceptions.propagate(e);
         }
-        describer = new GeneralBeanExcelDescriber<>(findGenericTypeFromSuperClass(getClass()));
+        describer = new GeneralBeanExcelDescriber<>(findGenericTypeFromSuperClass(getClass()), outputContext);
     }
 
-    public boolean writeCollection(Collection<T> dataCollection, String sheetName) throws EtlException {
+    public boolean writeCollection(Collection<T> dataCollection, String sheetName) {
 
         if(CollectionUtils.isEmpty(dataCollection)) return false;
-
         val sheetInfo = describer.getWorkSheetInfo();
-
         Sheet workingSheet;
-
         if(!Strings.isNullOrEmpty(sheetName))
             workingSheet = workbook.createSheet(sheetName);
         else if(!Strings.isNullOrEmpty(sheetInfo.getSheetName()))
@@ -100,7 +100,7 @@ public class ExcelOutput<T> implements Output<T>, AutoCloseable {
     public static void main(String[] args) throws Exception {
         OutputStream stream = Files.newOutputStream(Paths
                 .get("C:\\Users\\reimidesktop\\test1.xlsx"), CREATE, TRUNCATE_EXISTING);
-        val output = new ExcelOutput<ExcelInput.ExcelBean>(stream) {};
+        val output = new ExcelOutput<ExcelInput.ExcelBean>(stream, "这是一个从上下文里获取的值") {};
         val bean = new ExcelInput.ExcelBean();
         bean.setName("ASD");
         bean.setText("HAHA");

@@ -14,5 +14,7 @@ public @interface HeaderInfo {
 
     Class<? extends CellStyleSetter>[] headerCellStyle() default {};
 
-    String value();
+    String value() default "";
+
+    Value dynamicValue() default @Value;
 }
