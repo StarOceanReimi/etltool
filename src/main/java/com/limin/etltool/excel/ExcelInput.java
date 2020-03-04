@@ -5,11 +5,6 @@ import com.google.common.base.Strings;
 import com.limin.etltool.core.Batch;
 import com.limin.etltool.core.BatchInput;
 import com.limin.etltool.core.EtlException;
-import com.limin.etltool.database.DatabaseAccessor;
-import com.limin.etltool.database.DatabaseConfiguration;
-import com.limin.etltool.database.NormalDbOutput;
-import com.limin.etltool.database.TableColumnAccessor;
-import com.limin.etltool.database.mysql.DefaultMySqlDatabase;
 import com.limin.etltool.excel.annotation.*;
 import com.limin.etltool.excel.util.CellStyles;
 import com.limin.etltool.excel.util.MergeCellValue;
@@ -21,10 +16,8 @@ import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.val;
 import org.apache.commons.beanutils.ConvertUtils;
-import org.apache.poi.openxml4j.exceptions.OpenXML4JException;
 import org.apache.poi.ss.usermodel.*;
 
-import javax.xml.parsers.ParserConfigurationException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -131,7 +124,8 @@ public class ExcelInput<T> implements BatchInput<T> {
         @Column(value = "A",
                 header = {
                     @HeaderInfo(value = "名称", address = "A3:A4" ),
-                    @HeaderInfo(value = "综合信息", address = "A1:F1", headerCellStyle = CellStyles.CenterAlignmentStyle.class),
+                    @HeaderInfo(value = "综合信息", address = "A1:F1",
+                            headerCellStyle = CellStyles.CenterAlignmentStyle.class),
                     @HeaderInfo(address = "A2:F2",
                             headerCellStyle = CellStyles.FontNormalStyle.class,
                             dynamicValue = @Value(generator = CustomInformationGenerator.class))
@@ -165,17 +159,18 @@ public class ExcelInput<T> implements BatchInput<T> {
 
     }
 
-    public static void main(String[] args) throws IOException, EtlException, ParserConfigurationException, OpenXML4JException {
+    public static void main(String[] args) throws IOException, EtlException {
 
-        InputStream stream = Files.newInputStream(Paths.get("c:\\users\\reimidesktop\\test.xlsx"), READ);
+        InputStream stream = Files.newInputStream(Paths.get("c:\\users\\reimidesktop\\test1.xlsx"), READ);
         val sw = Stopwatch.createStarted();
         val input = new ExcelInput<ExcelBean>(stream) {};
 
-        DatabaseConfiguration configuration = new DatabaseConfiguration();
-        DatabaseAccessor accessor = new TableColumnAccessor(TableColumnAccessor.SqlType.INSERT, "test_bean");
-        val output = new NormalDbOutput<ExcelBean>(new DefaultMySqlDatabase(configuration), accessor) {};
-        output.setCreateTableIfNotExists(true);
-        output.writeCollection(input.readCollection());
+//        DatabaseConfiguration configuration = new DatabaseConfiguration();
+//        DatabaseAccessor accessor = new TableColumnAccessor(TableColumnAccessor.SqlType.INSERT, "test_bean");
+//        val output = new NormalDbOutput<ExcelBean>(new DefaultMySqlDatabase(configuration), accessor) {};
+//        output.setCreateTableIfNotExists(true);
+//        output.writeCollection(input.readCollection());
+        input.readCollection().forEach(System.out::println);
 
         System.out.println(sw.stop());
 //        sw.reset();
