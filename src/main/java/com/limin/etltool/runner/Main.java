@@ -4,7 +4,10 @@ import com.limin.etltool.database.DatabaseConfiguration;
 import com.limin.etltool.database.mysql.DefaultMySqlDatabase;
 import com.limin.etltool.database.util.DatabaseUtils;
 
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.Map;
 
 /**

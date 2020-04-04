@@ -44,14 +44,22 @@ public class ExcelOutput<T> implements Output<T>, AutoCloseable {
     protected ExcelOutput(OutputStream outputStream) {
         this(outputStream, null);
     }
-    protected ExcelOutput(OutputStream outputStream, Object outputContext) {
+
+    protected ExcelOutput(OutputStream outputStream, Workbook workbook, Object outputContext) {
         this.outputStream = outputStream;
         try {
-            workbook = WorkbookFactory.create(true);
+            if(workbook == null)
+                this.workbook = WorkbookFactory.create(true);
+            else
+                this.workbook = workbook;
         } catch (IOException e) {
             throw Exceptions.propagate(e);
         }
         describer = new GeneralBeanExcelDescriber<>(findGenericTypeFromSuperClass(getClass()), outputContext);
+    }
+
+    protected ExcelOutput(OutputStream outputStream, Object outputContext) {
+        this(outputStream, null, outputContext);
     }
 
     public boolean writeCollection(Collection<T> dataCollection, String sheetName) {

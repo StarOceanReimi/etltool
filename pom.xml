@@ -109,6 +109,7 @@
                 <filtering>true</filtering>
                 <excludes>
                     <exclude>**/*.yml</exclude>
+                    <exclude>**/logback.xml</exclude>
                 </excludes>
             </resource>
         </resources>
