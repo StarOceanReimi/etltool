@@ -178,7 +178,7 @@ class GeneralBeanExcelDescriber<T> {
             valueGenerator = value.generator().isInterface() ? null : (ValueGenerator) newInstance(value.generator());
             if(valueGenerator != null)
                 valueGenerator.setContext(outputContext);
-            valueStyleSetter = Sets.newHashSet();
+            valueStyleSetter = Sets.newLinkedHashSet();
             valueStyleSetter.addAll(workSheetInfo.valueDefaultSetter);
             newStyleSetters(valueStyleSetter, column.valueCellStyle());
             dataFormat = column.dataFormat();
