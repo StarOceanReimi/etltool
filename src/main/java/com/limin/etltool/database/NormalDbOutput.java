@@ -21,6 +21,7 @@ import org.apache.commons.collections.CollectionUtils;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -31,6 +32,7 @@ import java.util.stream.Collectors;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.limin.etltool.util.Exceptions.rethrow;
 import static com.limin.etltool.util.TemplateUtils.logFormat;
+import static java.util.Comparator.comparing;
 
 /**
  * @author 邱理
@@ -147,8 +149,6 @@ public class NormalDbOutput<T> extends AbstractDbOutput<T> {
             } else {
                 defs = ColumnDefinitionHelper.fromClass(data.getClass());
             }
-            defs.forEach(d -> {
-            });
             checkArgument(!CollectionUtils.isEmpty(defs), "column defs cannot be empty.");
             if(accessor instanceof TableColumnAccessor) {
                 List<String> columns = ((TableColumnAccessor) accessor).getColumns();
@@ -158,6 +158,7 @@ public class NormalDbOutput<T> extends AbstractDbOutput<T> {
                             .collect(Collectors.toList());
                 }
             }
+            defs.sort(comparing(ColumnDefinition::getName));
             database.createTable(tableName, null, defs, indexList);
         }
     }

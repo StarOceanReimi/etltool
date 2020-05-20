@@ -45,7 +45,7 @@ public class RedisConfiguration {
 
     public static void main(String[] args) {
 
-        RedisConfiguration configuration = new RedisConfiguration("192.168.137.57", "0LqWT5TZxYlttgKQZKqckF6LKGJlDoFnl6aGYSJQ29m3PD1UAFdKgAX0OJHUGLoZ");
+        RedisConfiguration configuration = new RedisConfiguration(args[0], args[1]);
 
         RedisClient client = RedisClient.create(configuration.getUrl());
         StatefulRedisConnection<String, String> redisConnection = client.connect();
