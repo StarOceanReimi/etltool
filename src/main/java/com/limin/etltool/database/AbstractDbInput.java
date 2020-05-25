@@ -29,13 +29,25 @@ public abstract class AbstractDbInput<T> extends DbSupport<T> implements DbInput
             throw Exceptions.inform("Database Accessor does not support this source");
     }
 
+    private boolean useStreamResult = false;
+
+    public void setUseStreamResult(boolean useStreamResult) {
+        this.useStreamResult = useStreamResult;
+    }
+
     @Override
     public Batch<T> readInBatch(int batchSize) throws EtlException {
 
         JdbcSqlParamObject sqlParamObject = DatabaseUtils.buildSqlParamObject(accessor.getSql(null));
         try {
             String sql = sqlParamObject.getJdbcSql();
-            PreparedStatement statement = connection.prepareStatement(sql);
+            PreparedStatement statement;
+            if(useStreamResult) {
+                statement = connection.prepareStatement(sql, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
+                statement.setFetchSize(Integer.MIN_VALUE);
+            } else {
+                statement = connection.prepareStatement(sql);
+            }
             log.debug("SQL: {}", sql);
             if(!MapUtils.isEmpty(accessor.getParams())) {
                 Object[] params = sqlParamObject.buildParam(accessor.getParams());
