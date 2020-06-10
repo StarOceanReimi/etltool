@@ -3,20 +3,25 @@ package com.limin.etltool.database.mysql;
 import com.google.common.base.Strings;
 import com.limin.etltool.database.Database;
 import com.limin.etltool.database.DatabaseConfiguration;
+import com.limin.etltool.database.PooledConnection;
 import com.limin.etltool.util.TemplateUtils;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.collections.MapUtils;
+import org.apache.commons.pool2.BasePooledObjectFactory;
+import org.apache.commons.pool2.PooledObject;
+import org.apache.commons.pool2.PooledObjectFactory;
+import org.apache.commons.pool2.impl.DefaultPooledObject;
+import org.apache.commons.pool2.impl.GenericObjectPool;
+import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static com.limin.etltool.database.mysql.ColumnDefinition.*;
+import static com.limin.etltool.database.mysql.ColumnDefinition.BIGINT;
+import static com.limin.etltool.database.mysql.ColumnDefinition.VARCHAR;
 import static com.limin.etltool.util.Exceptions.propagate;
 import static com.limin.etltool.util.Exceptions.rethrow;
 import static com.limin.etltool.util.QueryStringUtils.toQueryString;
@@ -37,9 +42,9 @@ public class DefaultMySqlDatabase implements Database {
         this.configuration = configuration;
     }
 
-    @Override
-    public Connection getConnection() {
+    private GenericObjectPool<Connection> pool;
 
+    private Connection genConnection() {
         try {
             Class.forName(configuration.getDriverClassName());
         } catch (ClassNotFoundException e) {
@@ -62,6 +67,62 @@ public class DefaultMySqlDatabase implements Database {
         } catch (SQLException e) {
             throw propagate(e);
         }
+    }
+
+    @Override
+    public Connection getConnection() {
+
+        if(pool == null || pool.isClosed())
+            return genConnection();
+        try {
+            return new PooledConnection(pool.borrowObject(), pool);
+        } catch (Exception e) {
+            throw propagate(e);
+        }
+    }
+
+    @Override
+    public void setPoolConfig(GenericObjectPoolConfig poolConfig) {
+        if(pool != null) pool.close();
+        pool = createPool(poolConfig);
+    }
+
+    private GenericObjectPool<Connection> createPool(GenericObjectPoolConfig poolConfig) {
+
+        PooledObjectFactory<Connection> factory = new BasePooledObjectFactory<Connection>() {
+
+            @Override
+            public void destroyObject(PooledObject<Connection> p) throws Exception {
+                p.getObject().close();
+            }
+
+            @Override
+            public boolean validateObject(PooledObject<Connection> p) {
+                try {
+                    Statement statement = p.getObject().createStatement();
+                    ResultSet set = statement.executeQuery("select 1");
+                    boolean result = false;
+                    if(set.next()) result = set.getInt(1) == 1;
+                    set.close();
+                    statement.close();
+                    return result;
+                } catch (SQLException e) {
+                    return false;
+                }
+            }
+
+            @Override
+            public Connection create() {
+                return getConnection();
+            }
+
+            @Override
+            public PooledObject<Connection> wrap(Connection obj) {
+                return new DefaultPooledObject<>(obj);
+            }
+        };
+
+        return new GenericObjectPool<>(factory, poolConfig);
     }
 
     @Override

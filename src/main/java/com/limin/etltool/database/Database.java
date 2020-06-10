@@ -1,6 +1,7 @@
 package com.limin.etltool.database;
 
 import com.limin.etltool.database.mysql.ColumnDefinition;
+import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 
 import java.sql.Connection;
 import java.util.List;
@@ -13,6 +14,8 @@ import java.util.List;
 public interface Database {
 
     Connection getConnection();
+
+    void setPoolConfig(GenericObjectPoolConfig poolConfig);
 
     boolean createTable(String table, String tableComment,
                         List<ColumnDefinition> defs);
