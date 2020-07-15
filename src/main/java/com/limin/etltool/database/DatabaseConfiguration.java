@@ -135,18 +135,18 @@ public class DatabaseConfiguration {
     }
 
     private static String findActiveProfile(ClassLoader cl) {
-        String active = System.getProperty("spring.profiles.active");
-        log.info("system spring profiles active: {}", active);
+        String active = System.getenv("SPRING_PROFILES_ACTIVE");
+        log.debug("env spring profiles active: {}", active);
         if(!Strings.isNullOrEmpty(active)) return active;
-        active = System.getenv("SPRING_PROFILES_ACTIVE");
-        log.info("env spring profiles active: {}", active);
+        active = System.getProperty("spring.profiles.active");
+        log.debug("system spring profiles active: {}", active);
         if(!Strings.isNullOrEmpty(active)) return active;
         InputStream stream = cl.getResourceAsStream("application.yml");
-        log.info("classloader found application.yml stream: {}", stream != null);
+        log.debug("classloader found application.yml stream: {}", stream != null);
         if(stream == null) return "prod";
         Properties properties = YAML.loadAs(stream, Properties.class);
         String profile = getProperty(properties, "spring.profiles.active");
-        log.info("spring application yml profile: {}", profile);
+        log.debug("spring application yml profile: {}", profile);
         return ofNullable(profile).orElse("prod");
     }
 
@@ -256,18 +256,6 @@ public class DatabaseConfiguration {
         builder.append(replacement);
         builder.append(ori.substring(matcher.end(groupName)));
         return builder.toString();
-    }
-
-    public static void main(String[] args) {
-
-        DatabaseConfiguration config = new DatabaseConfiguration();
-        System.out.println(config.getUrl());
-        System.out.println(config.getAttributes());
-        config.attribute("useSSL", true);
-        System.out.println(config.getAttributes());
-        System.out.println(config);
-
-
     }
 
 }

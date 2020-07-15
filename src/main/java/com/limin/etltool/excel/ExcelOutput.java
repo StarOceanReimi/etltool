@@ -64,7 +64,6 @@ public class ExcelOutput<T> implements Output<T>, AutoCloseable {
 
     public boolean writeCollection(Collection<T> dataCollection, String sheetName) {
 
-        if(CollectionUtils.isEmpty(dataCollection)) return false;
         val sheetInfo = describer.getWorkSheetInfo();
         Sheet workingSheet;
         if(!Strings.isNullOrEmpty(sheetName))
@@ -81,6 +80,7 @@ public class ExcelOutput<T> implements Output<T>, AutoCloseable {
             describer.writeHeader(row);
         }
 
+        if(CollectionUtils.isEmpty(dataCollection)) return false;
         for (T bean : dataCollection) {
             Row row = workingSheet.createRow(i++);
             describer.writeCell(row, bean);

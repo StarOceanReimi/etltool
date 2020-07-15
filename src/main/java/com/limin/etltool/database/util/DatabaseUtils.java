@@ -43,7 +43,7 @@ public abstract class DatabaseUtils {
     private static LoadingCache<Class<?>, INameConverter> converterCache = CacheBuilder.newBuilder()
             .build(CacheLoader.from(INameConverter::getConverter));
 
-    private static final Pattern PARAMS_PATTERN = Pattern.compile("(:\\w+)");
+    private static final Pattern PARAMS_PATTERN = Pattern.compile("(:[A-Za-z]\\w+)");
 
     public static JdbcSqlParamObject buildSqlParamObject(String sqlTemplate) {
         Matcher matcher = PARAMS_PATTERN.matcher(sqlTemplate);
@@ -174,5 +174,9 @@ public abstract class DatabaseUtils {
         private int    jdbcType;
 
         private Object value;
+    }
+
+    public static void main(String[] args) {
+        System.out.println(buildSqlParamObject("select * from t where d >:name").getJdbcSql());
     }
 }

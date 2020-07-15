@@ -10,7 +10,7 @@ public class UnderlineCaseNameConverter implements INameConverter {
     @Override
     public String rename(String name) {
         StringBuilder builder = new StringBuilder();
-        char[] array = name.toCharArray();
+        char[] array = name.toLowerCase().toCharArray();
         for(int i=0; i<array.length; i++) {
             if(array[i] == '_')
                 builder.append(Character.toUpperCase(array[++i]));

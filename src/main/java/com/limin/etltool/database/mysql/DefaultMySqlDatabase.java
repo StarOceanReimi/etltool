@@ -15,9 +15,11 @@ import org.apache.commons.pool2.impl.DefaultPooledObject;
 import org.apache.commons.pool2.impl.GenericObjectPool;
 import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 
+import java.io.PrintWriter;
 import java.sql.*;
 import java.util.Arrays;
 import java.util.List;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import static com.limin.etltool.database.mysql.ColumnDefinition.BIGINT;
@@ -44,6 +46,8 @@ public class DefaultMySqlDatabase implements Database {
 
     private GenericObjectPool<Connection> pool;
 
+    private GenericObjectPoolConfig poolConfig;
+
     private Connection genConnection() {
         try {
             Class.forName(configuration.getDriverClassName());
@@ -54,13 +58,13 @@ public class DefaultMySqlDatabase implements Database {
         String url = configuration.getUrl();
 
         if (!MapUtils.isEmpty(configuration.getAttributes())) {
-            if(!url.contains("?"))
+            if (!url.contains("?"))
                 url += "?" + toQueryString(wrapToQueryStringMap(configuration.getAttributes()));
             else
                 url += "&" + toQueryString(wrapToQueryStringMap(configuration.getAttributes()));
         }
 
-        log.info("CONNECTION URL: {}", url);
+        log.debug("CONNECTION URL: {}", url);
 
         try {
             return DriverManager.getConnection(url, configuration.getUsername(), configuration.getPassword());
@@ -72,8 +76,8 @@ public class DefaultMySqlDatabase implements Database {
     @Override
     public Connection getConnection() {
 
-        if(pool == null || pool.isClosed())
-            return genConnection();
+        if(pool == null) return genConnection();
+        if(pool.isClosed()) pool = createPool(poolConfig);
         try {
             return new PooledConnection(pool.borrowObject(), pool);
         } catch (Exception e) {
@@ -82,9 +86,20 @@ public class DefaultMySqlDatabase implements Database {
     }
 
     @Override
+    public Connection getConnection(String username, String password) throws SQLException {
+        return getConnection();
+    }
+
+    @Override
     public void setPoolConfig(GenericObjectPoolConfig poolConfig) {
-        if(pool != null) pool.close();
+        if (pool != null) pool.close();
+        this.poolConfig = poolConfig;
         pool = createPool(poolConfig);
+    }
+
+    @Override
+    public void shutdownPool() {
+        pool.close();
     }
 
     private GenericObjectPool<Connection> createPool(GenericObjectPoolConfig poolConfig) {
@@ -102,18 +117,19 @@ public class DefaultMySqlDatabase implements Database {
                     Statement statement = p.getObject().createStatement();
                     ResultSet set = statement.executeQuery("select 1");
                     boolean result = false;
-                    if(set.next()) result = set.getInt(1) == 1;
+                    if (set.next()) result = set.getInt(1) == 1;
                     set.close();
                     statement.close();
                     return result;
                 } catch (SQLException e) {
+                    log.error("connection validation failed. ", e);
                     return false;
                 }
             }
 
             @Override
             public Connection create() {
-                return getConnection();
+                return genConnection();
             }
 
             @Override
@@ -137,7 +153,7 @@ public class DefaultMySqlDatabase implements Database {
 
     @Override
     public boolean createTable(String table, String tableComment, List<ColumnDefinition> defs, ColumnDefinition.Index[] indices) {
-        if(indices == null)
+        if (indices == null)
             return createTable(table, tableComment, defs);
         String columnDefs = defs.stream().map(Object::toString).collect(Collectors.joining(","));
         String comment = ofNullable(tableComment).map(c -> "COMMENT '" + c + "'").orElse("");
@@ -145,13 +161,12 @@ public class DefaultMySqlDatabase implements Database {
                 .collect(Collectors.joining(","));
         String body = columnDefs + (Strings.isNullOrEmpty(indexOption) ? "" : "," + indexOption);
         String ddl = TemplateUtils.logFormat(COMMON_CREATE_TABLE_TPL, table, body, comment);
-        log.info("DDL: {}", ddl);
         return executeSQL(ddl);
     }
 
     @Override
     public boolean executeSQL(String ddl) {
-
+        log.debug("EXECUTING SQL: {}", ddl);
         Connection connection = getConnection();
         boolean result;
         try {
@@ -181,7 +196,6 @@ public class DefaultMySqlDatabase implements Database {
     }
 
     public static void main(String[] args) {
-        ClassLoader cl = Thread.currentThread().getContextClassLoader();
         DatabaseConfiguration configuration = new DatabaseConfiguration();
         val id = ColumnDefinition.builder()
                 .name("id")
@@ -192,8 +206,47 @@ public class DefaultMySqlDatabase implements Database {
                 .name("name")
                 .type(VARCHAR(20))
                 .build();
-        new DefaultMySqlDatabase(configuration).createTable("test", "测试一下",
-                Arrays.asList(id, name));
+        new DefaultMySqlDatabase(configuration).createTable("test", "测试一下", Arrays.asList(id, name));
 
+    }
+
+    @Override
+    public <T> T unwrap(Class<T> iface) throws SQLException {
+        try {
+            // This works for classes that aren't actually wrapping anything
+            return iface.cast(this);
+        } catch (ClassCastException cce) {
+            throw new SQLException("Unable to unwrap to " + iface.toString());
+        }
+    }
+
+    @Override
+    public boolean isWrapperFor(Class<?> iface) throws SQLException {
+        return iface.isAssignableFrom(getClass());
+    }
+
+    @Override
+    public PrintWriter getLogWriter() throws SQLException {
+        return DriverManager.getLogWriter();
+    }
+
+    @Override
+    public void setLogWriter(PrintWriter out) throws SQLException {
+        DriverManager.setLogWriter(out);
+    }
+
+    @Override
+    public void setLoginTimeout(int seconds) throws SQLException {
+        DriverManager.setLoginTimeout(seconds);
+    }
+
+    @Override
+    public int getLoginTimeout() throws SQLException {
+        return DriverManager.getLoginTimeout();
+    }
+
+    @Override
+    public Logger getParentLogger() throws SQLFeatureNotSupportedException {
+        return Logger.getLogger("MySqlDatabaseGlobal");
     }
 }
