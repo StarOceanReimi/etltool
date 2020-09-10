@@ -1,6 +1,5 @@
 package com.limin.etltool.database.util.apacheconverter;
 
-import io.netty.handler.codec.DateFormatter;
 import org.apache.commons.beanutils.Converter;
 
 import java.sql.Date;
@@ -31,6 +30,7 @@ public class LocalDateConverter implements Converter {
         this.pattern = pattern;
     }
 
+    @SuppressWarnings({"unchecked"})
     @Override
     public <T> T convert(Class<T> type, Object value) {
 

@@ -17,14 +17,8 @@ import java.beans.PropertyDescriptor;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
-import java.sql.SQLException;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.sql.*;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -68,7 +62,7 @@ public abstract class DatabaseUtils {
             JdbcClassFieldDescriptor descriptor = new JdbcClassFieldDescriptor();
             descriptor.setFieldName(metaData.getColumnLabel(i));
             descriptor.setJdbcType(metaData.getColumnType(i));
-            descriptor.setValue(resultSet.getObject(i));
+            descriptor.setValue(getObject(resultSet, descriptor.getJdbcType(), i));
             descriptors.add(descriptor);
         }
 
@@ -82,6 +76,19 @@ public abstract class DatabaseUtils {
             return wrapToBean(descriptors, clazz);
         }
 
+    }
+
+    private static final Calendar DEFAULT_CALENDAR;
+
+    static {
+        Calendar calendar = Calendar.getInstance(Locale.CHINA);
+        DEFAULT_CALENDAR = (Calendar) calendar.clone();
+    }
+
+    private static Object getObject(ResultSet resultSet, int jdbcType, int i) throws SQLException {
+        if (jdbcType == Types.TIMESTAMP)
+            return resultSet.getTimestamp(i, DEFAULT_CALENDAR);
+        return resultSet.getObject(i);
     }
 
     private static <T> T wrapToBean(List<JdbcClassFieldDescriptor> descriptors, Class<T> clazz) {

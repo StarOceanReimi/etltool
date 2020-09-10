@@ -152,14 +152,20 @@ public class DefaultMySqlDatabase implements Database {
     private static final String COMMON_CREATE_TABLE_TPL = "CREATE TABLE {} ({}) {}";
 
     @Override
-    public boolean createTable(String table, String tableComment, List<ColumnDefinition> defs, ColumnDefinition.Index[] indices) {
-        if (indices == null)
+    public boolean createTable(String table,
+                               String tableComment,
+                               List<ColumnDefinition> defs,
+                               String[] primaryKeys,
+                               ColumnDefinition.Index[] indices) {
+        if (indices == null && primaryKeys == null)
             return createTable(table, tableComment, defs);
-        String columnDefs = defs.stream().map(Object::toString).collect(Collectors.joining(","));
+        String columnDefs = defs.stream().peek(def -> def.setPrimaryKey(false)).map(Object::toString).collect(Collectors.joining(","));
         String comment = ofNullable(tableComment).map(c -> "COMMENT '" + c + "'").orElse("");
-        String indexOption = Arrays.stream(indices).map(idx -> "index " + idx.toString())
-                .collect(Collectors.joining(","));
-        String body = columnDefs + (Strings.isNullOrEmpty(indexOption) ? "" : "," + indexOption);
+        String indexOption = ofNullable(indices).map(i -> Arrays.stream(i).map(idx -> "index " + idx.toString())
+                .collect(Collectors.joining(","))).map(s -> "," + s).orElse("");
+        String primaryOption = primaryKeys != null && primaryKeys.length > 0 ?
+                " ,PRIMARY KEY (" + String.join(",", primaryKeys) + ")" : "";
+        String body = columnDefs + primaryOption + indexOption;
         String ddl = TemplateUtils.logFormat(COMMON_CREATE_TABLE_TPL, table, body, comment);
         return executeSQL(ddl);
     }

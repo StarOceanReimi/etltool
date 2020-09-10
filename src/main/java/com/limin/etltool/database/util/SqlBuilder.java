@@ -56,7 +56,7 @@ public abstract class SqlBuilder {
 
     public static class InsertBuilder extends SqlBuilder {
 
-        private static final String INSERT_TPL = "INSERT INTO {} {} VALUES {}";
+        private static final String INSERT_TPL = "INSERT {} INTO {} {} VALUES {}";
 
         @Override
         public String buildSqlTemplate() {
@@ -64,10 +64,17 @@ public abstract class SqlBuilder {
             checkArgument(!CollectionUtils.isEmpty(columnNames), "columnNames cannot be empty");
             String columns = "(" + COMMA_JOINER.join(columnNames) + ")";
             String placeHolder = "(" + columnNames.stream().map(n -> ":" + n).collect(Collectors.joining(",")) + ")";
-            return logFormat(INSERT_TPL, tableName, columns, placeHolder);
+            return logFormat(INSERT_TPL, ignoreDuplicates ? "IGNORE" : "", tableName, columns, placeHolder);
         }
 
         private List<String> columnNames = Lists.newArrayList();
+
+        private boolean ignoreDuplicates = false;
+
+        public InsertBuilder ignoreDuplicates(boolean ignoreDuplicates) {
+            this.ignoreDuplicates = ignoreDuplicates;
+            return this;
+        }
 
         public InsertBuilder table(String name) {
             this.tableName = name;

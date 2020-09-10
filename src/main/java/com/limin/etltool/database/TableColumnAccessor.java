@@ -62,9 +62,16 @@ public class TableColumnAccessor implements DatabaseAccessor {
         this.type = type;
     }
 
+    private boolean insertIgnore = false;
+
     private List<String> columns = Lists.newLinkedList();
 
     private List<String> conditions = Lists.newLinkedList();
+
+    public TableColumnAccessor insertIgnore(boolean insertIgnore) {
+        this.insertIgnore = insertIgnore;
+        return this;
+    }
 
     public TableColumnAccessor insertedReturnKeyName(String name) {
         this.insertedReturnKeyName = name;
@@ -88,7 +95,7 @@ public class TableColumnAccessor implements DatabaseAccessor {
                 if(bean != null && CollectionUtils.isEmpty(columns))
                     setColumnsWithBean(bean);
                 return SqlBuilder.insertBuilder()
-                        .table(table).columns(columns).buildSqlTemplate();
+                        .table(table).columns(columns).ignoreDuplicates(insertIgnore).buildSqlTemplate();
             case UPDATE:
                 if(bean != null && CollectionUtils.isEmpty(columns))
                     setColumnsWithBean(bean);

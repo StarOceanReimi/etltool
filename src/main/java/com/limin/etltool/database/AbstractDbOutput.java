@@ -8,7 +8,6 @@ import com.limin.etltool.database.util.DatabaseUtils;
 import com.limin.etltool.database.util.IdKey;
 import com.limin.etltool.database.util.JdbcSqlParamObject;
 import com.limin.etltool.util.Exceptions;
-import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.beanutils.ConvertUtils;
 import org.apache.commons.beanutils.Converter;
@@ -35,7 +34,6 @@ import static com.limin.etltool.util.Exceptions.rethrow;
  * @description
  * @date 创建于 2019/12/18
  */
-@Data
 @Slf4j
 public abstract class AbstractDbOutput<T> extends DbSupport<T> implements DbOutput<T> {
 

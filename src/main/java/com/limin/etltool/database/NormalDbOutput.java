@@ -21,7 +21,6 @@ import org.apache.commons.collections.CollectionUtils;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -55,10 +54,18 @@ public class NormalDbOutput<T> extends AbstractDbOutput<T> {
 
     private boolean onlyTruncateInFirstTimeInBatch = true;
 
+    private boolean useDeleteFrom = false;
+
+    private String[] primaryKeyNames = null;
+
     private ColumnDefinition.Index[] indexList;
 
     public void setTableIndicesIfAutoCreateTable(ColumnDefinition.Index... indices) {
         this.indexList = indices;
+    }
+
+    public void setPrimaryKeyNameIfAutoCreateTable(String... primaryKeyName) {
+        this.primaryKeyNames = primaryKeyName;
     }
 
     public void setCreateTableIfNotExists(boolean createTableIfNotExists) {
@@ -71,6 +78,10 @@ public class NormalDbOutput<T> extends AbstractDbOutput<T> {
 
     public void setOnlyTruncateInFirstTimeInBatch(boolean truncateAtFirstTime) {
         this.onlyTruncateInFirstTimeInBatch = truncateAtFirstTime;
+    }
+
+    public void setUseDeleteFrom(boolean useDeleteFrom) {
+        this.useDeleteFrom = useDeleteFrom;
     }
 
     @Override
@@ -159,7 +170,7 @@ public class NormalDbOutput<T> extends AbstractDbOutput<T> {
                 }
             }
             defs.sort(comparing(ColumnDefinition::getName));
-            database.createTable(tableName, null, defs, indexList);
+            database.createTable(tableName, null, defs, primaryKeyNames, indexList);
         }
     }
 
@@ -197,8 +208,9 @@ public class NormalDbOutput<T> extends AbstractDbOutput<T> {
     private boolean truncateTable(final String tableName) {
         AtomicBoolean flag = new AtomicBoolean();
         executeStatement((IntegerStatementHandler) statement -> {
-//            boolean result = statement.execute(logFormat("TRUNCATE TABLE {}", tableName));
-            boolean result = statement.execute(logFormat("DELETE FROM {}", tableName));
+            String truncateSql = useDeleteFrom ?
+                    logFormat("DELETE FROM {}", tableName) : logFormat("TRUNCATE TABLE {}", tableName);
+            boolean result = statement.execute(truncateSql);
             flag.set(result);
             return 0;
         }, (e) -> flag.set(false));

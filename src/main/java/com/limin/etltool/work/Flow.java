@@ -3,7 +3,6 @@ package com.limin.etltool.work;
 import com.google.common.base.Stopwatch;
 import com.limin.etltool.core.*;
 import com.limin.etltool.database.*;
-import com.limin.etltool.database.mysql.ColumnDefinitionHelper;
 import com.limin.etltool.database.mysql.DefaultMySqlDatabase;
 import com.limin.etltool.step.ColumnEditing;
 import com.limin.etltool.step.ColumnMapping;
@@ -14,8 +13,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import static com.limin.etltool.database.mysql.ColumnDefinition.VARCHAR;
 
 /**
  * @author 邱理
@@ -33,6 +30,19 @@ public class Flow<I, O> implements Operation<I, O> {
             }
         } finally {
             batch.release();
+            closeClosableQuietly(input, output);
+        }
+    }
+
+    private void closeClosableQuietly(Object... closables) {
+        for (Object closable : closables) {
+            if(closable instanceof AutoCloseable) {
+                try {
+                    ((AutoCloseable) closable).close();
+                } catch (Exception e) {
+                    //swallow
+                }
+            }
         }
     }
 

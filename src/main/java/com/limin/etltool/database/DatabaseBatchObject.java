@@ -84,7 +84,6 @@ class DatabaseBatchObject<T> implements Batch<T> {
 
         try {
             Statement statement = resultSet.getStatement();
-            statement.getConnection().close();
             statement.close();
             resultSet.close();
         } catch (SQLException e) {

@@ -3,7 +3,6 @@ package com.limin.etltool.database.mysql;
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import com.limin.etltool.database.util.IdKey;
-import com.limin.etltool.util.ReflectionUtils;
 import org.apache.commons.beanutils.PropertyUtils;
 
 import java.beans.PropertyDescriptor;
@@ -43,7 +42,6 @@ public abstract class ColumnDefinitionHelper {
             typeMapping.put(classType, type);
     }
 
-
     public static List<ColumnDefinition> fromMap(Map<String, Object> map) {
         List<ColumnDefinition> defs = Lists.newArrayList();
         for(String propName : map.keySet()) {
@@ -51,7 +49,7 @@ public abstract class ColumnDefinitionHelper {
             ColumnDefinition.ColumnType type = guessFromName(propName);
             if (type == null)
                 type = nameMapping.get(propName);
-            if(value != null) {
+            if(value != null && type == null) {
                 type = guessFromType(value.getClass());
                 if(type == null)
                     type = typeMapping.get(value.getClass());

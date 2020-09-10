@@ -3,7 +3,9 @@ package com.limin.etltool.database;
 import com.google.common.base.Charsets;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import com.limin.etltool.util.Exceptions;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
@@ -19,10 +21,7 @@ import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Properties;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -70,6 +69,13 @@ public class DatabaseConfiguration {
             if(subProp instanceof String) return (String) subProp;
         }
         return null;
+    }
+
+    public static DatabaseConfiguration profileDir(ClassLoader cl, String dir, String databaseName) {
+        checkNotNull(cl, "classLoader cannot be null");
+        checkArgument(!Strings.isNullOrEmpty(dir), "profile dir cannot be empty");
+        checkArgument(!Strings.isNullOrEmpty(databaseName), "database name cannot be empty");
+        return withClassloader(cl, dir).databaseName(databaseName);
     }
 
     public static DatabaseConfiguration input(ClassLoader cl, String databaseName) {
@@ -134,20 +140,38 @@ public class DatabaseConfiguration {
         return withSpringApplication(null);
     }
 
+    private static final Set<String> ENV_PROFILES = ImmutableSet.of("dev", "prepro", "test", "prod");
+
+    private static final Splitter COMMA_SPLITTER = Splitter.on(",").trimResults();
+
+    private static String findEnvProfile(String profiles) {
+        return Sets.intersection(Sets.newHashSet(COMMA_SPLITTER.split(profiles)), ENV_PROFILES).iterator().next();
+    }
+
     private static String findActiveProfile(ClassLoader cl) {
         String active = System.getenv("SPRING_PROFILES_ACTIVE");
         log.debug("env spring profiles active: {}", active);
-        if(!Strings.isNullOrEmpty(active)) return active;
+        if(!Strings.isNullOrEmpty(active)) return findEnvProfile(active);
         active = System.getProperty("spring.profiles.active");
         log.debug("system spring profiles active: {}", active);
-        if(!Strings.isNullOrEmpty(active)) return active;
+        if(!Strings.isNullOrEmpty(active)) return findEnvProfile(active);
         InputStream stream = cl.getResourceAsStream("application.yml");
-        log.debug("classloader found application.yml stream: {}", stream != null);
-        if(stream == null) return "prod";
-        Properties properties = YAML.loadAs(stream, Properties.class);
-        String profile = getProperty(properties, "spring.profiles.active");
-        log.debug("spring application yml profile: {}", profile);
-        return ofNullable(profile).orElse("prod");
+        if(stream != null) {
+            log.debug("classloader found application.yml stream");
+            Properties properties = YAML.loadAs(stream, Properties.class);
+            String profile = getProperty(properties, "spring.profiles.active");
+            log.debug("spring application yml profile: {}", profile);
+            return ofNullable(profile).map(DatabaseConfiguration::findEnvProfile).orElse("prod");
+        }
+        stream = cl.getResourceAsStream("bootstrap.yml");
+        if(stream != null) {
+            log.debug("classloader found bootstrap.yml stream");
+            Properties properties = YAML.loadAs(stream, Properties.class);
+            String profile = getProperty(properties, "spring.profiles.active");
+            log.debug("spring bootstrap yml profile: {}", profile);
+            return ofNullable(profile).map(DatabaseConfiguration::findEnvProfile).orElse("prod");
+        }
+        return "prod";
     }
 
     public DatabaseConfiguration() {

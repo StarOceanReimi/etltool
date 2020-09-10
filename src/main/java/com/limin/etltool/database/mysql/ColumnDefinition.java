@@ -4,6 +4,7 @@ import com.google.common.base.Strings;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.Setter;
 import org.apache.commons.collections.CollectionUtils;
 
 import java.math.BigDecimal;
@@ -21,6 +22,7 @@ import static java.util.Optional.ofNullable;
  * @date 创建于 2019/12/19
  */
 @Getter
+@Setter
 @Builder
 public class ColumnDefinition {
 
@@ -160,6 +162,7 @@ public class ColumnDefinition {
         public static ColumnType guessFromName(String name) {
 
             String ignoreCase = name.toLowerCase();
+            if(ignoreCase.equals("permission_id")) return VARCHAR(255);
             if(ignoreCase.contains("id")) return BIGINT(null);
             if(ignoreCase.contains("text")
                     || ignoreCase.contains("remark")

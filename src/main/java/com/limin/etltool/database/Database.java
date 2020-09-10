@@ -25,6 +25,7 @@ public interface Database extends DataSource {
 
     boolean createTable(String table, String tableComment,
                         List<ColumnDefinition> defs,
+                        String[] primaryKeys,
                         ColumnDefinition.Index[] indices);
 
     boolean executeSQL(String ddl);

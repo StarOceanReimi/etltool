@@ -33,6 +33,7 @@ public class LocalDatetimeConverter implements Converter {
         this.pattern = pattern;
     }
 
+    @SuppressWarnings({"unchecked"})
     @Override
     public <T> T convert(Class<T> type, Object value) {
 
