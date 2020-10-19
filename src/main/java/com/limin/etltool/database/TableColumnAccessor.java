@@ -37,11 +37,11 @@ public class TableColumnAccessor implements DatabaseAccessor {
     static private Joiner joiner = Joiner.on(", ").skipNulls();
 
     public enum SqlType {
-        INSERT, UPDATE, DELETE, SELECT;
+        INSERT, UPSERT, UPDATE, DELETE, SELECT;
         public boolean accept(Source source) {
             if((source instanceof DbInput) && this == SELECT) return true;
             if(source instanceof DbOutput)
-                return this == INSERT || this == UPDATE || this == DELETE;
+                return this == INSERT || this == UPDATE || this == DELETE || this == UPSERT;
             return false;
         }
     }
@@ -105,6 +105,10 @@ public class TableColumnAccessor implements DatabaseAccessor {
                 return SqlBuilder.updateBuilder()
                         .table(table).columns(columns)
                         .cond(conditions).buildSqlTemplate();
+            case UPSERT:
+                if(bean != null && CollectionUtils.isEmpty(columns))
+                    setColumnsWithBean(bean);
+                return SqlBuilder.upsertBuilder().table(table).columns(columns).buildSqlTemplate();
             case DELETE:
                 return SqlBuilder.deleteBuilder()
                         .table(table)

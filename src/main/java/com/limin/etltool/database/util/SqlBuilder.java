@@ -8,9 +8,8 @@ import com.limin.etltool.util.TemplateUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.CollectionUtils;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.function.BinaryOperator;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -27,9 +26,13 @@ public abstract class SqlBuilder {
 
     protected String tableName;
 
-
     private SqlBuilder() {
     }
+
+    public static UpsertBuilder upsertBuilder() {
+        return new UpsertBuilder();
+    }
+
 
     public JdbcSqlParamObject build() {
 
@@ -52,6 +55,47 @@ public abstract class SqlBuilder {
     public static DeleteBuilder deleteBuilder() {
 
         return new DeleteBuilder();
+    }
+
+    public static class UpsertBuilder extends SqlBuilder {
+
+        static final String UPSERT_TPL = "INSERT INTO {} {} VALUES {} ON DUPLICATE KEY UPDATE {}";
+
+        private List<String> columnNames = Lists.newArrayList();
+        private String tableName;
+
+        public UpsertBuilder table(String name) {
+            this.tableName = name;
+            return this;
+        }
+
+        public UpsertBuilder column(String name) {
+            columnNames.add(name);
+            return this;
+        }
+
+        public UpsertBuilder columns(String... names) {
+            columnNames.addAll(Arrays.asList(names));
+            return this;
+        }
+
+        public UpsertBuilder columns(List<String> names) {
+            columnNames.addAll(names);
+            return this;
+        }
+
+        @Override
+        public String buildSqlTemplate() {
+            checkArgument(!Strings.isNullOrEmpty(tableName), "tableName cannot be empty");
+            checkArgument(!CollectionUtils.isEmpty(columnNames), "columnNames cannot be empty");
+            String columns = "(" + COMMA_JOINER.join(columnNames) + ")";
+            String placeHolder = "(" + columnNames.stream().map(n -> ":" + n).collect(Collectors.joining(",")) + ")";
+            BinaryOperator<String> merge = (s1, s2) -> { throw new RuntimeException("conflicts found."); };
+            LinkedHashMap<String, String> map = columnNames.stream()
+                    .collect(toMap(n -> n, n -> "VALUES(" + n + ")", merge, LinkedHashMap::new));
+            String updates = Joiner.on(", ").withKeyValueSeparator("=").join(map);
+            return logFormat(UPSERT_TPL, tableName, columns, placeHolder, updates);
+        }
     }
 
     public static class InsertBuilder extends SqlBuilder {
@@ -190,11 +234,10 @@ public abstract class SqlBuilder {
         map.put("age", 33);
 
         JdbcSqlParamObject paramObject =
-                SqlBuilder.updateBuilder()
+                SqlBuilder.upsertBuilder()
                         .table("my_test")
-                        .columns("id")
-                        .cond("name", "age").build();
-
+                        .columns("id", "name", "age")
+                        .build();
 
         System.out.println(paramObject.getJdbcSql());
         System.out.println(Arrays.toString(paramObject.buildParam(map)));
