@@ -30,12 +30,16 @@ public class ColumnDefinition {
 
     private ColumnType type;
 
+    @Builder.Default
     private boolean nullable = false;
 
+    @Builder.Default
     private boolean unique = false;
 
+    @Builder.Default
     private boolean primaryKey = false;
 
+    @Builder.Default
     private boolean autoIncrement = false;
 
     private String comment;

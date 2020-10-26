@@ -140,7 +140,7 @@ public class DatabaseConfiguration {
         return withSpringApplication(null);
     }
 
-    private static final Set<String> ENV_PROFILES = ImmutableSet.of("dev", "prepro", "test", "prod");
+    private static final Set<String> ENV_PROFILES = ImmutableSet.of("dev", "prepro", "test", "prod", "yichun");
 
     private static final Splitter COMMA_SPLITTER = Splitter.on(",").trimResults();
 
