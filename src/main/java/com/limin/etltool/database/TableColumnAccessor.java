@@ -37,7 +37,7 @@ public class TableColumnAccessor implements DatabaseAccessor {
     static private Joiner joiner = Joiner.on(", ").skipNulls();
 
     public enum SqlType {
-        INSERT, UPSERT, UPDATE, DELETE, SELECT;
+        INSERT, UPSERT, VERSION_UPSERT, UPDATE, DELETE, SELECT;
         public boolean accept(Source source) {
             if((source instanceof DbInput) && this == SELECT) return true;
             if(source instanceof DbOutput)
@@ -68,6 +68,8 @@ public class TableColumnAccessor implements DatabaseAccessor {
 
     private List<String> conditions = Lists.newLinkedList();
 
+    private String versionColumn;
+
     public TableColumnAccessor insertIgnore(boolean insertIgnore) {
         this.insertIgnore = insertIgnore;
         return this;
@@ -85,6 +87,11 @@ public class TableColumnAccessor implements DatabaseAccessor {
 
     public TableColumnAccessor andConditions(String... columnName) {
         conditions.addAll(Arrays.asList(columnName));
+        return this;
+    }
+
+    public TableColumnAccessor versionColumnName(String columnName) {
+        this.versionColumn = columnName;
         return this;
     }
 
@@ -109,6 +116,11 @@ public class TableColumnAccessor implements DatabaseAccessor {
                 if(bean != null && CollectionUtils.isEmpty(columns))
                     setColumnsWithBean(bean);
                 return SqlBuilder.upsertBuilder().table(table).columns(columns).buildSqlTemplate();
+            case VERSION_UPSERT:
+                if(bean != null && CollectionUtils.isEmpty(columns))
+                    setColumnsWithBean(bean);
+                return SqlBuilder.versionUpsertBulder().versionColumnName(versionColumn)
+                        .table(table).columns(columns).buildSqlTemplate();
             case DELETE:
                 return SqlBuilder.deleteBuilder()
                         .table(table)

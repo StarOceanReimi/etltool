@@ -8,7 +8,10 @@ import com.limin.etltool.util.TemplateUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.CollectionUtils;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.function.BinaryOperator;
 import java.util.stream.Collectors;
 
@@ -33,6 +36,9 @@ public abstract class SqlBuilder {
         return new UpsertBuilder();
     }
 
+    public static UpsertWithVersion versionUpsertBulder() {
+        return new UpsertWithVersion();
+    }
 
     public JdbcSqlParamObject build() {
 
@@ -55,6 +61,68 @@ public abstract class SqlBuilder {
     public static DeleteBuilder deleteBuilder() {
 
         return new DeleteBuilder();
+    }
+
+    public static class UpsertWithVersion extends SqlBuilder {
+
+        static final String UPSERT_TPL = "INSERT INTO {} {} VALUES {} ON DUPLICATE KEY UPDATE {}";
+
+        private List<String> columnNames = Lists.newArrayList();
+
+        private String versionField;
+
+        private UpsertWithVersion versionFieldName(String versionField) {
+            this.versionField = versionField;
+            return this;
+        }
+
+        private String tableName;
+
+        public UpsertWithVersion versionColumnName(String name) {
+            this.versionField = name;
+            return this;
+        }
+
+        public UpsertWithVersion table(String name) {
+            this.tableName = name;
+            return this;
+        }
+
+        public UpsertWithVersion column(String name) {
+            columnNames.add(name);
+            return this;
+        }
+
+        public UpsertWithVersion columns(String... names) {
+            columnNames.addAll(Arrays.asList(names));
+            return this;
+        }
+
+        public UpsertWithVersion columns(List<String> names) {
+            columnNames.addAll(names);
+            return this;
+        }
+
+        @Override
+        public String buildSqlTemplate() {
+            checkArgument(!Strings.isNullOrEmpty(tableName), "tableName cannot be empty");
+            checkArgument(!Strings.isNullOrEmpty(versionField), "version field cannot be empty!");
+            checkArgument(!CollectionUtils.isEmpty(columnNames), "columnNames cannot be empty");
+            checkArgument(columnNames.contains(versionField), "columnNames must contains version field");
+
+            String columns = "(" + COMMA_JOINER.join(columnNames) + ")";
+            String placeHolder = "(" + columnNames.stream().map(n -> ":" + n).collect(Collectors.joining(",")) + ")";
+            BinaryOperator<String> merge = (s1, s2) -> { throw new RuntimeException("conflicts found."); };
+            LinkedHashMap<String, String> map = columnNames.stream()
+                    .collect(toMap(n -> n, this::buildValue, merge, LinkedHashMap::new));
+            String updates = Joiner.on(", ").withKeyValueSeparator("=").join(map);
+            return logFormat(UPSERT_TPL, tableName, columns, placeHolder, updates);
+        }
+
+        private String buildValue(String n) {
+            return String.format("IF(VALUES(%1$s) > %1$s, VALUES(%2$s), %2$s)", versionField, n);
+        }
+
     }
 
     public static class UpsertBuilder extends SqlBuilder {
@@ -232,11 +300,13 @@ public abstract class SqlBuilder {
         map.put("id", 123L);
         map.put("name", "QL");
         map.put("age", 33);
+        map.put("ts", 123L);
 
         JdbcSqlParamObject paramObject =
-                SqlBuilder.upsertBuilder()
+                SqlBuilder.versionUpsertBulder()
                         .table("my_test")
-                        .columns("id", "name", "age")
+                        .versionFieldName("ts")
+                        .columns("id", "name", "age", "ts")
                         .build();
 
         System.out.println(paramObject.getJdbcSql());
