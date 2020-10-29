@@ -71,6 +71,7 @@ public abstract class AbstractDbOutput<T> extends DbSupport<T> implements DbOutp
         T sample = dataCollection.stream().findAny().get();
         JdbcSqlParamObject paramObject = DatabaseUtils.buildSqlParamObject(accessor.getSql(sample));
         try {
+            connection.setTransactionIsolation(isolationLevel);
             connection.setAutoCommit(false);
             PreparedStatement statement = buildPreparedStatement(paramObject, sample);
             int count = 0;

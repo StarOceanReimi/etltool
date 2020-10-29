@@ -20,6 +20,8 @@ public abstract class DbSupport<T> implements AutoCloseable {
 
     private static AtomicInteger threadCount = new AtomicInteger(0);
 
+    protected int isolationLevel = Connection.TRANSACTION_REPEATABLE_READ;
+
     protected volatile Connection connection;
 
     protected DatabaseAccessor accessor;
@@ -54,6 +56,10 @@ public abstract class DbSupport<T> implements AutoCloseable {
 
     public void keepConnectionAlive() {
         ConnectionAliveChecker.getInstance().register("DbSupport-" + threadCount.incrementAndGet(), connection, null);
+    }
+
+    public void setIsolationLevel(int level) {
+        isolationLevel = level;
     }
 
     protected void initializeConnection(Database database) {

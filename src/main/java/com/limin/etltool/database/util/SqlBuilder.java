@@ -114,7 +114,9 @@ public abstract class SqlBuilder {
             String placeHolder = "(" + columnNames.stream().map(n -> ":" + n).collect(Collectors.joining(",")) + ")";
             BinaryOperator<String> merge = (s1, s2) -> { throw new RuntimeException("conflicts found."); };
             LinkedHashMap<String, String> map = columnNames.stream()
+                    .filter(n -> !n.equals(versionField))
                     .collect(toMap(n -> n, this::buildValue, merge, LinkedHashMap::new));
+            map.put(versionField, "VALUES(" + versionField + ")");
             String updates = Joiner.on(", ").withKeyValueSeparator("=").join(map);
             return logFormat(UPSERT_TPL, tableName, columns, placeHolder, updates);
         }

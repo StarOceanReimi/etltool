@@ -41,7 +41,7 @@ public class TableColumnAccessor implements DatabaseAccessor {
         public boolean accept(Source source) {
             if((source instanceof DbInput) && this == SELECT) return true;
             if(source instanceof DbOutput)
-                return this == INSERT || this == UPDATE || this == DELETE || this == UPSERT;
+                return this == INSERT || this == UPDATE || this == DELETE || this == UPSERT || this == VERSION_UPSERT;
             return false;
         }
     }
