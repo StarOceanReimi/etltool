@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -41,9 +42,9 @@ public abstract class DbSupport<T> implements AutoCloseable {
             Type type = getClass().getGenericSuperclass();
             if (type instanceof ParameterizedType) {
                 Type actualType = ((ParameterizedType) type).getActualTypeArguments()[0];
-                if(actualType instanceof Class)
+                if (actualType instanceof Class)
                     this.componentType = (Class<T>) actualType;
-                else if(actualType instanceof ParameterizedType)
+                else if (actualType instanceof ParameterizedType)
                     this.componentType = (Class<T>) ((ParameterizedType) actualType).getRawType();
             }
         } else {
@@ -55,7 +56,21 @@ public abstract class DbSupport<T> implements AutoCloseable {
     }
 
     public void keepConnectionAlive() {
-        ConnectionAliveChecker.getInstance().register("DbSupport-" + threadCount.incrementAndGet(), connection, null);
+        ConnectionAliveChecker.getInstance()
+                .register("DbSupport-" + threadCount.incrementAndGet(), connection, (name, conn) -> {
+                    log.warn("re-initialize connection for {}", name);
+                    if (conn != null) {
+                        try {
+                            conn.close();
+                        } catch (SQLException ex) {
+                            log.error("close connection", ex);
+                        }
+                    }
+                    synchronized (DbSupport.this) {
+                        initializeConnection(database);
+                        log.warn("re-initialize connection for {} finished.", name);
+                    }
+                });
     }
 
     public void setIsolationLevel(int level) {

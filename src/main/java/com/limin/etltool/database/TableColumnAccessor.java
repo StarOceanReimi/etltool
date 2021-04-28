@@ -36,6 +36,8 @@ public class TableColumnAccessor implements DatabaseAccessor {
 
     static private Joiner joiner = Joiner.on(", ").skipNulls();
 
+    private boolean updateVersion = true;
+
     public enum SqlType {
         INSERT, UPSERT, VERSION_UPSERT, UPDATE, DELETE, SELECT;
         public boolean accept(Source source) {
@@ -80,6 +82,11 @@ public class TableColumnAccessor implements DatabaseAccessor {
         return this;
     }
 
+    public TableColumnAccessor updateVersion(boolean update) {
+        this.updateVersion = update;
+        return this;
+    }
+
     public TableColumnAccessor column(String... columnName) {
         columns.addAll(Arrays.asList(columnName));
         return this;
@@ -119,7 +126,9 @@ public class TableColumnAccessor implements DatabaseAccessor {
             case VERSION_UPSERT:
                 if(bean != null && CollectionUtils.isEmpty(columns))
                     setColumnsWithBean(bean);
-                return SqlBuilder.versionUpsertBulder().versionColumnName(versionColumn)
+                return SqlBuilder.versionUpsertBulder()
+                        .updateVersion(updateVersion)
+                        .versionColumnName(versionColumn)
                         .table(table).columns(columns).buildSqlTemplate();
             case DELETE:
                 return SqlBuilder.deleteBuilder()

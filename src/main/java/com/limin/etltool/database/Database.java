@@ -30,6 +30,8 @@ public interface Database extends DataSource {
 
     boolean executeSQL(String ddl);
 
+    boolean executeSQL(String sql, StatementCallback callback);
+
     void optimizeForBatchWriting();
 
     DatabaseConfiguration getConfiguration();

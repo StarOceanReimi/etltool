@@ -1,7 +1,9 @@
 package com.limin.etltool.database.mysql;
 
 import com.google.common.base.Strings;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.limin.etltool.database.util.IdKey;
 import org.apache.commons.beanutils.PropertyUtils;
 
@@ -10,6 +12,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -31,46 +34,25 @@ public abstract class ColumnDefinitionHelper {
     public static void suggestColumnType(String name, ColumnDefinition.ColumnType type) {
         checkArgument(!Strings.isNullOrEmpty(name), "name must not be null");
         checkNotNull(type, "type must not be null");
-        if(!nameMapping.containsKey(name))
+        if (!nameMapping.containsKey(name))
             nameMapping.put(name, type);
     }
 
     public static void suggestColumnType(Class<?> classType, ColumnDefinition.ColumnType type) {
         checkNotNull(classType, "classType must not be null");
         checkNotNull(type, "type must not be null");
-        if(!typeMapping.containsKey(classType))
+        if (!typeMapping.containsKey(classType))
             typeMapping.put(classType, type);
     }
 
     public static List<ColumnDefinition> fromMap(Map<String, Object> map) {
-        List<ColumnDefinition> defs = Lists.newArrayList();
-        for(String propName : map.keySet()) {
-            Object value = map.get(propName);
-            ColumnDefinition.ColumnType type = guessFromName(propName);
-            if (type == null)
-                type = nameMapping.get(propName);
-            if(value != null && type == null) {
-                type = guessFromType(value.getClass());
-                if(type == null)
-                    type = typeMapping.get(value.getClass());
-            }
-            if(type == null)
-                throw inform("cannot determine type for property {} in map", propName);
-
-            ColumnDefinition def = ColumnDefinition.builder()
-                    .name(propName)
-                    .type(type)
-                    .primaryKey(isPrimaryKey(propName, null))
-                    .build();
-            defs.add(def);
-        }
-        return defs;
+        return fromMap(map, null);
     }
 
     private static boolean isPrimaryKey(String propName, Class<?> beanType) {
 
-        if("id".equalsIgnoreCase(propName)) return true;
-        if(beanType != null) {
+        if ("id".equalsIgnoreCase(propName)) return true;
+        if (beanType != null) {
             try {
                 Field field = beanType.getDeclaredField(propName);
                 return field.isAnnotationPresent(IdKey.class);
@@ -82,16 +64,26 @@ public abstract class ColumnDefinitionHelper {
     }
 
     public static List<ColumnDefinition> fromClass(Class<?> clazz) {
+        return fromClass(clazz, null);
+    }
 
+    public static List<ColumnDefinition> fromClass(Class<?> clazz, Map<String, ColumnDefinition.ColumnType> typeConfig) {
         PropertyDescriptor[] descriptors = PropertyUtils.getPropertyDescriptors(clazz);
         List<ColumnDefinition> defs = Lists.newArrayList();
+        typeConfig = Optional.ofNullable(typeConfig).orElseGet(Maps::newHashMap);
+        Map<String, ColumnDefinition.ColumnType> suggests = ImmutableMap
+                .<String, ColumnDefinition.ColumnType>builder()
+                .putAll(nameMapping)
+                .putAll(typeConfig)
+                .build();
         for (PropertyDescriptor descriptor : descriptors) {
             String propName = descriptor.getDisplayName();
-            if(propName.equals("class")) continue;
+            if (propName.equals("class")) continue;
             Method read = descriptor.getReadMethod();
             ColumnDefinition.ColumnType type = guessFromName(propName);
-            if(type == null) type = guessFromType(read.getReturnType());
-            if(type == null)
+            if (type == null) type = suggests.get(propName);
+            if (type == null) type = guessFromType(read.getReturnType());
+            if (type == null)
                 throw inform("cannot determine type for property {} in class {}", propName, clazz);
 
             ColumnDefinition def = ColumnDefinition.builder()
@@ -102,5 +94,42 @@ public abstract class ColumnDefinitionHelper {
             defs.add(def);
         }
         return defs;
+    }
+
+    public static List<ColumnDefinition> fromMap(Map<String, Object> map, Map<String, ColumnDefinition.ColumnType> typeConfig) {
+
+        List<ColumnDefinition> defs = Lists.newArrayList();
+
+        typeConfig = Optional.ofNullable(typeConfig).orElseGet(Maps::newHashMap);
+
+        Map<String, ColumnDefinition.ColumnType> suggests = ImmutableMap
+                .<String, ColumnDefinition.ColumnType>builder()
+                .putAll(nameMapping)
+                .putAll(typeConfig)
+                .build();
+
+        for (String propName : map.keySet()) {
+            Object value = map.get(propName);
+
+            ColumnDefinition.ColumnType type = guessFromName(propName);
+            if (type == null)
+                type = suggests.get(propName);
+            if (value != null && type == null) {
+                type = guessFromType(value.getClass());
+                if (type == null)
+                    type = typeMapping.get(value.getClass());
+            }
+            if (type == null)
+                throw inform("cannot determine type for property {} in map", propName);
+
+            ColumnDefinition def = ColumnDefinition.builder()
+                    .name(propName)
+                    .type(type)
+                    .primaryKey(isPrimaryKey(propName, null))
+                    .build();
+            defs.add(def);
+        }
+        return defs;
+
     }
 }

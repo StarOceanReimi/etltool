@@ -170,7 +170,7 @@ public class ColumnDefinition {
             if(ignoreCase.contains("id")) return BIGINT(null);
             if(ignoreCase.contains("text")
                     || ignoreCase.contains("remark")
-                    || ignoreCase.contains("content"))
+                    || ignoreCase.endsWith("content"))
                 return TEXT();
             if(ignoreCase.contains("date")
                     || ignoreCase.contains("modify_at")

@@ -127,7 +127,6 @@ public abstract class Beans {
                 rethrow(e);
             }
         }
-
     }
 
     @AllArgsConstructor

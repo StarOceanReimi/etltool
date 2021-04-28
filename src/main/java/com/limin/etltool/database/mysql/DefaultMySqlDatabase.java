@@ -1,20 +1,16 @@
 package com.limin.etltool.database.mysql;
 
-import com.google.common.base.Strings;
 import com.limin.etltool.database.Database;
 import com.limin.etltool.database.DatabaseConfiguration;
-import com.limin.etltool.database.PooledConnection;
+import com.limin.etltool.database.StatementCallback;
 import com.limin.etltool.util.TemplateUtils;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.collections.MapUtils;
-import org.apache.commons.pool2.BasePooledObjectFactory;
-import org.apache.commons.pool2.PooledObject;
-import org.apache.commons.pool2.PooledObjectFactory;
-import org.apache.commons.pool2.impl.DefaultPooledObject;
-import org.apache.commons.pool2.impl.GenericObjectPool;
+import org.apache.commons.dbcp2.BasicDataSource;
 import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 
+import javax.sql.DataSource;
 import java.io.PrintWriter;
 import java.sql.*;
 import java.util.Arrays;
@@ -40,105 +36,71 @@ public class DefaultMySqlDatabase implements Database {
 
     private final DatabaseConfiguration configuration;
 
+    private final DataSource delegate;
+
     public DefaultMySqlDatabase(DatabaseConfiguration configuration) {
         this.configuration = configuration;
+        BasicDataSource basicDataSource = new BasicDataSource();
+        basicDataSource.setDriverClassName(configuration.getDriverClassName());
+        basicDataSource.setUrl(constructUri(configuration));
+        basicDataSource.setUsername(configuration.getUsername());
+        basicDataSource.setPassword(configuration.getPassword());
+        delegate = basicDataSource;
     }
 
-    private GenericObjectPool<Connection> pool;
-
-    private GenericObjectPoolConfig poolConfig;
-
-    private Connection genConnection() {
-        try {
-            Class.forName(configuration.getDriverClassName());
-        } catch (ClassNotFoundException e) {
-            rethrow(e);
-        }
-
+    private static String constructUri(DatabaseConfiguration configuration) {
         String url = configuration.getUrl();
-
         if (!MapUtils.isEmpty(configuration.getAttributes())) {
             if (!url.contains("?"))
                 url += "?" + toQueryString(wrapToQueryStringMap(configuration.getAttributes()));
             else
                 url += "&" + toQueryString(wrapToQueryStringMap(configuration.getAttributes()));
         }
-
         log.debug("CONNECTION URL: {}", url);
-
-        try {
-            return DriverManager.getConnection(url, configuration.getUsername(), configuration.getPassword());
-        } catch (SQLException e) {
-            throw propagate(e);
-        }
+        return url;
     }
 
     @Override
     public Connection getConnection() {
-
-        if(pool == null) return genConnection();
-        if(pool.isClosed()) pool = createPool(poolConfig);
         try {
-            return new PooledConnection(pool.borrowObject(), pool);
-        } catch (Exception e) {
-            throw propagate(e);
+            return delegate.getConnection();
+        } catch (SQLException ex) {
+            throw propagate(ex);
         }
+//        if (pool == null) return genConnection();
+//        if (pool.isClosed()) pool = createPool(poolConfig);
+//        try {
+//            return new PooledConnection(pool.borrowObject(), pool);
+//        } catch (Exception e) {
+//            throw propagate(e);
+//        }
     }
 
     @Override
     public Connection getConnection(String username, String password) throws SQLException {
-        return getConnection();
+        return delegate.getConnection(username, password);
     }
 
     @Override
     public void setPoolConfig(GenericObjectPoolConfig poolConfig) {
-        if (pool != null) pool.close();
-        this.poolConfig = poolConfig;
-        pool = createPool(poolConfig);
+        if (delegate instanceof BasicDataSource) {
+            BasicDataSource dataSource = (BasicDataSource) delegate;
+            dataSource.setMaxIdle(poolConfig.getMaxIdle());
+            dataSource.setMinIdle(poolConfig.getMinIdle());
+            dataSource.setMaxWaitMillis(poolConfig.getMaxWaitMillis());
+            dataSource.setMaxTotal(poolConfig.getMaxTotal());
+        }
     }
 
     @Override
     public void shutdownPool() {
-        pool.close();
-    }
-
-    private GenericObjectPool<Connection> createPool(GenericObjectPoolConfig poolConfig) {
-
-        PooledObjectFactory<Connection> factory = new BasePooledObjectFactory<Connection>() {
-
-            @Override
-            public void destroyObject(PooledObject<Connection> p) throws Exception {
-                p.getObject().close();
+        if (delegate instanceof BasicDataSource) {
+            try {
+                ((BasicDataSource) delegate).close();
+            } catch (SQLException ex) {
+                log.error("shutdown pool error: ", ex);
             }
-
-            @Override
-            public boolean validateObject(PooledObject<Connection> p) {
-                try {
-                    Statement statement = p.getObject().createStatement();
-                    ResultSet set = statement.executeQuery("select 1");
-                    boolean result = false;
-                    if (set.next()) result = set.getInt(1) == 1;
-                    set.close();
-                    statement.close();
-                    return result;
-                } catch (SQLException e) {
-                    log.error("connection validation failed. ", e);
-                    return false;
-                }
-            }
-
-            @Override
-            public Connection create() {
-                return genConnection();
-            }
-
-            @Override
-            public PooledObject<Connection> wrap(Connection obj) {
-                return new DefaultPooledObject<>(obj);
-            }
-        };
-
-        return new GenericObjectPool<>(factory, poolConfig);
+        }
     }
 
     @Override
@@ -171,13 +133,14 @@ public class DefaultMySqlDatabase implements Database {
     }
 
     @Override
-    public boolean executeSQL(String ddl) {
-        log.debug("EXECUTING SQL: {}", ddl);
+    public boolean executeSQL(String sql, StatementCallback callback) {
+        log.debug("EXECUTING SQL: {}", sql);
         Connection connection = getConnection();
         boolean result;
         try {
             Statement statement = connection.createStatement();
-            result = statement.execute(ddl);
+            result = statement.execute(sql);
+            if (callback != null) callback.doWithStatement(result, statement);
         } catch (SQLException ex) {
             result = false;
             rethrow(ex);
@@ -192,6 +155,11 @@ public class DefaultMySqlDatabase implements Database {
     }
 
     @Override
+    public boolean executeSQL(String ddl) {
+        return executeSQL(ddl, null);
+    }
+
+    @Override
     public void optimizeForBatchWriting() {
         getConfiguration().attribute("rewriteBatchedStatements", true);
     }
@@ -203,56 +171,51 @@ public class DefaultMySqlDatabase implements Database {
 
     public static void main(String[] args) {
         DatabaseConfiguration configuration = new DatabaseConfiguration();
-        val id = ColumnDefinition.builder()
-                .name("id")
-                .type(BIGINT(20))
-                .build();
-
-        val name = ColumnDefinition.builder()
-                .name("name")
-                .type(VARCHAR(20))
-                .build();
-        new DefaultMySqlDatabase(configuration).createTable("test", "测试一下", Arrays.asList(id, name));
+//        val id = ColumnDefinition.builder()
+//                .name("id")
+//                .type(BIGINT(20))
+//                .build();
+//        val name = ColumnDefinition.builder()
+//                .name("name")
+//                .type(VARCHAR(20))
+//                .build();
+//        new DefaultMySqlDatabase(configuration).createTable("test", "测试一下", Arrays.asList(id, name));
 
     }
 
     @Override
     public <T> T unwrap(Class<T> iface) throws SQLException {
-        try {
-            // This works for classes that aren't actually wrapping anything
-            return iface.cast(this);
-        } catch (ClassCastException cce) {
-            throw new SQLException("Unable to unwrap to " + iface.toString());
-        }
+        return delegate.unwrap(iface);
     }
 
     @Override
     public boolean isWrapperFor(Class<?> iface) throws SQLException {
-        return iface.isAssignableFrom(getClass());
+        return delegate.isWrapperFor(iface);
     }
 
     @Override
     public PrintWriter getLogWriter() throws SQLException {
-        return DriverManager.getLogWriter();
+        return delegate.getLogWriter();
     }
 
     @Override
     public void setLogWriter(PrintWriter out) throws SQLException {
-        DriverManager.setLogWriter(out);
+        delegate.setLogWriter(out);
     }
 
     @Override
     public void setLoginTimeout(int seconds) throws SQLException {
-        DriverManager.setLoginTimeout(seconds);
+        delegate.setLoginTimeout(seconds);
     }
 
     @Override
     public int getLoginTimeout() throws SQLException {
-        return DriverManager.getLoginTimeout();
+        return delegate.getLoginTimeout();
     }
 
     @Override
     public Logger getParentLogger() throws SQLFeatureNotSupportedException {
-        return Logger.getLogger("MySqlDatabaseGlobal");
+        return delegate.getParentLogger();
     }
+
 }

@@ -63,6 +63,7 @@ public abstract class SqlBuilder {
         return new DeleteBuilder();
     }
 
+
     public static class UpsertWithVersion extends SqlBuilder {
 
         static final String UPSERT_TPL = "INSERT INTO {} {} VALUES {} ON DUPLICATE KEY UPDATE {}";
@@ -70,6 +71,8 @@ public abstract class SqlBuilder {
         private List<String> columnNames = Lists.newArrayList();
 
         private String versionField;
+
+        private boolean updateVersion;
 
         private UpsertWithVersion versionFieldName(String versionField) {
             this.versionField = versionField;
@@ -80,6 +83,11 @@ public abstract class SqlBuilder {
 
         public UpsertWithVersion versionColumnName(String name) {
             this.versionField = name;
+            return this;
+        }
+
+        public UpsertWithVersion updateVersion(boolean updateVersion) {
+            this.updateVersion = updateVersion;
             return this;
         }
 
@@ -116,7 +124,10 @@ public abstract class SqlBuilder {
             LinkedHashMap<String, String> map = columnNames.stream()
                     .filter(n -> !n.equals(versionField))
                     .collect(toMap(n -> n, this::buildValue, merge, LinkedHashMap::new));
-            map.put(versionField, "VALUES(" + versionField + ")");
+            if(updateVersion)
+                map.put(versionField, "VALUES(" + versionField + ")");
+            else
+                map.put(versionField, String.format("IF(VALUES(%1$s) > %1$s, VALUES(%1$s), %1$s)", versionField));
             String updates = Joiner.on(", ").withKeyValueSeparator("=").join(map);
             return logFormat(UPSERT_TPL, tableName, columns, placeHolder, updates);
         }
@@ -308,6 +319,7 @@ public abstract class SqlBuilder {
                 SqlBuilder.versionUpsertBulder()
                         .table("my_test")
                         .versionFieldName("ts")
+                        .updateVersion(false)
                         .columns("id", "name", "age", "ts")
                         .build();
 
