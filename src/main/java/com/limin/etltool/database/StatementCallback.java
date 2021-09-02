@@ -1,5 +1,6 @@
 package com.limin.etltool.database;
 
+import java.sql.SQLException;
 import java.sql.Statement;
 
 /**
@@ -13,5 +14,5 @@ import java.sql.Statement;
 @FunctionalInterface
 public interface StatementCallback {
 
-    void doWithStatement(boolean success, Statement statement);
+    void doWithStatement(boolean success, Statement statement) throws SQLException;
 }

@@ -13,7 +13,6 @@ import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -28,21 +27,25 @@ import static com.limin.etltool.util.Exceptions.inform;
  */
 public abstract class ColumnDefinitionHelper {
 
-    private static final Map<String, ColumnDefinition.ColumnType> nameMapping = new ConcurrentHashMap<>();
-    private static final Map<Class<?>, ColumnDefinition.ColumnType> typeMapping = new ConcurrentHashMap<>();
+    private static final ThreadLocal<Map<String, ColumnDefinition.ColumnType>> nameMapping =
+            ThreadLocal.withInitial(Maps::newHashMap);
+
+    private static final ThreadLocal<Map<Class<?>, ColumnDefinition.ColumnType>> typeMapping =
+            ThreadLocal.withInitial(Maps::newHashMap);
+
 
     public static void suggestColumnType(String name, ColumnDefinition.ColumnType type) {
         checkArgument(!Strings.isNullOrEmpty(name), "name must not be null");
         checkNotNull(type, "type must not be null");
-        if (!nameMapping.containsKey(name))
-            nameMapping.put(name, type);
+        if (!nameMapping.get().containsKey(name))
+            nameMapping.get().put(name, type);
     }
 
     public static void suggestColumnType(Class<?> classType, ColumnDefinition.ColumnType type) {
         checkNotNull(classType, "classType must not be null");
         checkNotNull(type, "type must not be null");
-        if (!typeMapping.containsKey(classType))
-            typeMapping.put(classType, type);
+        if (!typeMapping.get().containsKey(classType))
+            typeMapping.get().put(classType, type);
     }
 
     public static List<ColumnDefinition> fromMap(Map<String, Object> map) {
@@ -73,7 +76,7 @@ public abstract class ColumnDefinitionHelper {
         typeConfig = Optional.ofNullable(typeConfig).orElseGet(Maps::newHashMap);
         Map<String, ColumnDefinition.ColumnType> suggests = ImmutableMap
                 .<String, ColumnDefinition.ColumnType>builder()
-                .putAll(nameMapping)
+                .putAll(nameMapping.get())
                 .putAll(typeConfig)
                 .build();
         for (PropertyDescriptor descriptor : descriptors) {
@@ -104,7 +107,7 @@ public abstract class ColumnDefinitionHelper {
 
         Map<String, ColumnDefinition.ColumnType> suggests = ImmutableMap
                 .<String, ColumnDefinition.ColumnType>builder()
-                .putAll(nameMapping)
+                .putAll(nameMapping.get())
                 .putAll(typeConfig)
                 .build();
 
@@ -117,7 +120,7 @@ public abstract class ColumnDefinitionHelper {
             if (value != null && type == null) {
                 type = guessFromType(value.getClass());
                 if (type == null)
-                    type = typeMapping.get(value.getClass());
+                    type = typeMapping.get().get(value.getClass());
             }
             if (type == null)
                 throw inform("cannot determine type for property {} in map", propName);

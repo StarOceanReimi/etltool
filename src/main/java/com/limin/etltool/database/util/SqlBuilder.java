@@ -4,14 +4,12 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import com.limin.etltool.util.TemplateUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.CollectionUtils;
 
-import java.util.Arrays;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.BinaryOperator;
 import java.util.stream.Collectors;
 
@@ -120,11 +118,13 @@ public abstract class SqlBuilder {
 
             String columns = "(" + COMMA_JOINER.join(columnNames) + ")";
             String placeHolder = "(" + columnNames.stream().map(n -> ":" + n).collect(Collectors.joining(",")) + ")";
-            BinaryOperator<String> merge = (s1, s2) -> { throw new RuntimeException("conflicts found."); };
+            BinaryOperator<String> merge = (s1, s2) -> {
+                throw new RuntimeException("conflicts found.");
+            };
             LinkedHashMap<String, String> map = columnNames.stream()
                     .filter(n -> !n.equals(versionField))
                     .collect(toMap(n -> n, this::buildValue, merge, LinkedHashMap::new));
-            if(updateVersion)
+            if (updateVersion)
                 map.put(versionField, "VALUES(" + versionField + ")");
             else
                 map.put(versionField, String.format("IF(VALUES(%1$s) > %1$s, VALUES(%1$s), %1$s)", versionField));
@@ -171,7 +171,9 @@ public abstract class SqlBuilder {
             checkArgument(!CollectionUtils.isEmpty(columnNames), "columnNames cannot be empty");
             String columns = "(" + COMMA_JOINER.join(columnNames) + ")";
             String placeHolder = "(" + columnNames.stream().map(n -> ":" + n).collect(Collectors.joining(",")) + ")";
-            BinaryOperator<String> merge = (s1, s2) -> { throw new RuntimeException("conflicts found."); };
+            BinaryOperator<String> merge = (s1, s2) -> {
+                throw new RuntimeException("conflicts found.");
+            };
             LinkedHashMap<String, String> map = columnNames.stream()
                     .collect(toMap(n -> n, n -> "VALUES(" + n + ")", merge, LinkedHashMap::new));
             String updates = Joiner.on(", ").withKeyValueSeparator("=").join(map);
@@ -188,11 +190,15 @@ public abstract class SqlBuilder {
             checkArgument(!Strings.isNullOrEmpty(tableName), "tableName cannot be empty");
             checkArgument(!CollectionUtils.isEmpty(columnNames), "columnNames cannot be empty");
             String columns = "(" + COMMA_JOINER.join(columnNames) + ")";
-            String placeHolder = "(" + columnNames.stream().map(n -> ":" + n).collect(Collectors.joining(",")) + ")";
+            String placeHolder = "(" + columnNames.stream()
+                    .map(n -> ":" + (withDefaultNames.containsKey(n) ? withDefaultNames.get(n) + n : n))
+                    .collect(Collectors.joining(",")) + ")";
             return logFormat(INSERT_TPL, ignoreDuplicates ? "IGNORE" : "", tableName, columns, placeHolder);
         }
 
-        private List<String> columnNames = Lists.newArrayList();
+        private final List<String> columnNames = Lists.newArrayList();
+
+        private final Map<String, String> withDefaultNames = Maps.newHashMap();
 
         private boolean ignoreDuplicates = false;
 
@@ -218,6 +224,11 @@ public abstract class SqlBuilder {
 
         public InsertBuilder columns(List<String> names) {
             columnNames.addAll(names);
+            return this;
+        }
+
+        public InsertBuilder defaultColumns(Map<String, String> defaultNames) {
+            withDefaultNames.putAll(defaultNames);
             return this;
         }
 

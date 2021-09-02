@@ -7,6 +7,7 @@ import org.apache.poi.ss.formula.functions.T;
 import java.beans.PropertyDescriptor;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.*;
+import java.util.function.Consumer;
 
 /**
  * @author 邱理
@@ -19,9 +20,9 @@ public abstract class ReflectionUtils {
     @SuppressWarnings("unchecked")
     public static <T> Class<T> findGenericTypeFromSuperClass(Class<?> clazz) {
         Type superClass = clazz.getGenericSuperclass();
-        if(superClass instanceof ParameterizedType) {
+        if (superClass instanceof ParameterizedType) {
             Type subType = ((ParameterizedType) superClass).getActualTypeArguments()[0];
-            if(subType instanceof Class) return (Class<T>) subType;
+            if (subType instanceof Class) return (Class<T>) subType;
         }
         throw Exceptions.inform("cannot infer generic class from {}", superClass);
     }
@@ -29,17 +30,17 @@ public abstract class ReflectionUtils {
 
     public static String findPropertyNameWithAnnotation(Object bean, Class<? extends Annotation> annotationClass) {
         Object o = findPropertyWithAnnotation(bean, annotationClass);
-        if(o == null) return null;
-        if(o instanceof Field) return ((Field) o).getName();
-        if(o instanceof Method) return ((Method) o).getName();
+        if (o == null) return null;
+        if (o instanceof Field) return ((Field) o).getName();
+        if (o instanceof Method) return ((Method) o).getName();
         return null;
     }
 
     public static Object findPropertyValueWithAnnotation(Object bean, Class<? extends Annotation> annotationClass) {
 
         Object o = findPropertyWithAnnotation(bean, annotationClass);
-        if(o == null) return null;
-        if(o instanceof Field) {
+        if (o == null) return null;
+        if (o instanceof Field) {
             ((Field) o).setAccessible(true);
             try {
                 return ((Field) o).get(bean);
@@ -49,7 +50,7 @@ public abstract class ReflectionUtils {
             }
         }
 
-        if(o instanceof Method) {
+        if (o instanceof Method) {
             ((Method) o).setAccessible(true);
             try {
                 return ((Method) o).invoke(bean);
@@ -62,16 +63,35 @@ public abstract class ReflectionUtils {
         return null;
     }
 
+    public static void doWithPropertyWithAnnotation(Object bean,
+                                                    Class<? extends Annotation> annotationClass,
+                                                    Consumer<Member> callback) {
+
+        PropertyDescriptor[] descriptors = PropertyUtils.getPropertyDescriptors(bean.getClass());
+        for (PropertyDescriptor descriptor : descriptors) {
+            Method read = descriptor.getReadMethod();
+            if (read.isAnnotationPresent(annotationClass)) {
+                callback.accept(read);
+            }
+        }
+        Field[] fields = bean.getClass().getDeclaredFields();
+        for (Field f : fields) {
+            if (f.isAnnotationPresent(annotationClass)) {
+                callback.accept(f);
+            }
+        }
+    }
+
     private static Object findPropertyWithAnnotation(Object bean, Class<? extends Annotation> annotationClass) {
         PropertyDescriptor[] descriptors = PropertyUtils.getPropertyDescriptors(bean.getClass());
-        for(PropertyDescriptor descriptor : descriptors) {
+        for (PropertyDescriptor descriptor : descriptors) {
             Method read = descriptor.getReadMethod();
-            if(read.isAnnotationPresent(annotationClass))
+            if (read.isAnnotationPresent(annotationClass))
                 return read;
         }
         Field[] fields = bean.getClass().getDeclaredFields();
         for (Field f : fields) {
-            if(f.isAnnotationPresent(annotationClass))
+            if (f.isAnnotationPresent(annotationClass))
                 return f;
         }
         return null;

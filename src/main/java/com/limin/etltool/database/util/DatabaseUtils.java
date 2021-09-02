@@ -37,7 +37,7 @@ public abstract class DatabaseUtils {
     private static LoadingCache<Class<?>, INameConverter> converterCache = CacheBuilder.newBuilder()
             .build(CacheLoader.from(INameConverter::getConverter));
 
-    private static final Pattern PARAMS_PATTERN = Pattern.compile("(:[A-Za-z]\\w+)");
+    private static final Pattern PARAMS_PATTERN = Pattern.compile("(:[A-Za-z]\\w*)");
 
     public static JdbcSqlParamObject buildSqlParamObject(String sqlTemplate) {
         Matcher matcher = PARAMS_PATTERN.matcher(sqlTemplate);
@@ -45,8 +45,18 @@ public abstract class DatabaseUtils {
         StringBuffer result = new StringBuffer();
         while (matcher.find()) {
             String paramName = matcher.group(1).substring(1);
-            paramNames.add(paramName);
-            matcher.appendReplacement(result, "?");
+            if (paramName.startsWith("default_")) {
+                String param = paramName.substring(8);
+                matcher.appendReplacement(result, "COALESCE(?, DEFAULT(" + param + "))");
+                paramNames.add(param);
+            } else if (paramName.startsWith("timestamp_")) {
+                String param = paramName.substring(10);
+                matcher.appendReplacement(result, "COALESCE(?, CURRENT_TIMESTAMP)");
+                paramNames.add(param);
+            } else {
+                matcher.appendReplacement(result, "?");
+                paramNames.add(paramName);
+            }
         }
         matcher.appendTail(result);
         return new JdbcSqlParamObject(result.toString(), paramNames.toArray(new String[0]));
@@ -169,8 +179,9 @@ public abstract class DatabaseUtils {
 
     public static void setParameters(PreparedStatement statement, Object[] params) throws SQLException {
         if(params == null || params.length == 0) return;
-        for(int i = 1; i <= params.length; i++)
+        for(int i = 1; i <= params.length; i++) {
             statement.setObject(i, params[i - 1]);
+        }
     }
 
     @Data

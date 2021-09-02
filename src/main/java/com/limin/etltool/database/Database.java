@@ -18,6 +18,8 @@ public interface Database extends DataSource {
 
     void setPoolConfig(GenericObjectPoolConfig poolConfig);
 
+    void usePool(boolean enable);
+
     void shutdownPool();
 
     boolean createTable(String table, String tableComment,

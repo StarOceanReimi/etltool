@@ -202,27 +202,28 @@ public class DatabaseConfiguration {
     }
 
     private static String findActiveProfile(ClassLoader cl) {
-        String active = System.getenv("SPRING_PROFILES_ACTIVE");
+        String active = System.getenv("label");
         log.debug("env spring profiles active: {}", active);
-        if (!Strings.isNullOrEmpty(active)) return findEnvProfile(cl, active);
-        active = System.getProperty("spring.profiles.active");
-        log.debug("system spring profiles active: {}", active);
-        if (!Strings.isNullOrEmpty(active)) return findEnvProfile(cl, active);
+        if (!Strings.isNullOrEmpty(active)) return active;
         InputStream stream = cl.getResourceAsStream("application.yml");
         if (stream != null) {
             log.debug("classloader found application.yml stream");
             Properties properties = loadProperties(stream);
-            String profile = getProperty(properties, "spring.profiles.active");
-            log.debug("spring application yml profile: {}", profile);
-            return ofNullable(profile).map(p -> findEnvProfile(cl, p)).orElse("prod");
+            String profile = getProperty(properties, "spring.cloud.config.label");
+            if (!Strings.isNullOrEmpty(profile)) {
+                if (profile.contains("dev")) return "dev";
+                return profile;
+            }
         }
         stream = cl.getResourceAsStream("bootstrap.yml");
         if (stream != null) {
             log.debug("classloader found bootstrap.yml stream");
             Properties properties = loadProperties(stream);
-            String profile = getProperty(properties, "spring.profiles.active");
-            log.debug("spring bootstrap yml profile: {}", profile);
-            return ofNullable(profile).map(p -> findEnvProfile(cl, p)).orElse("prod");
+            String profile = getProperty(properties, "spring.cloud.config.label");
+            if (!Strings.isNullOrEmpty(profile)) {
+                if (profile.contains("dev")) return "dev";
+                return profile;
+            }
         }
         return "prod";
     }
