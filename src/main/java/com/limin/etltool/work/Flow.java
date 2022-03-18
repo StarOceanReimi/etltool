@@ -22,6 +22,10 @@ import java.util.stream.Stream;
 public class Flow<I, O> implements Operation<I, O> {
 
     public void processInBatch(int batchSize, BatchInput<I> input, Transformer<Stream<I>, Stream<O>> t, Output<O> output) throws EtlException {
+        if (output instanceof NormalDbOutput && ((NormalDbOutput<O>) output).isMultiThreadMode()) {
+            //multi thread mode disable batch
+            batchSize = Integer.MAX_VALUE;
+        }
         Batch<I> batch = input.readInBatch(batchSize);
         try {
             while (batch.hasMore()) {
@@ -36,7 +40,7 @@ public class Flow<I, O> implements Operation<I, O> {
 
     private void closeClosableQuietly(Object... closables) {
         for (Object closable : closables) {
-            if(closable instanceof AutoCloseable) {
+            if (closable instanceof AutoCloseable) {
                 try {
                     ((AutoCloseable) closable).close();
                 } catch (Exception e) {
@@ -64,7 +68,7 @@ public class Flow<I, O> implements Operation<I, O> {
         ColumnMapping mapping = new ColumnMapping();
         mapping.addColumnForMapBean("ts");
         ColumnEditing<Map<String, Object>> editor = new ColumnEditing<>();
-        editor.registerEditor("ts", (m)->m.put("ts", LocalDateTime.now()));
+        editor.registerEditor("ts", v -> LocalDateTime.now());
 
         val flow = new Flow<Map<String, Object>, Map<String, Object>>();
         val sw = Stopwatch.createStarted();
@@ -72,7 +76,6 @@ public class Flow<I, O> implements Operation<I, O> {
         System.out.println(sw.stop());
 
     }
-
 
 
     public static void main(String[] args) throws Exception {
@@ -106,7 +109,6 @@ public class Flow<I, O> implements Operation<I, O> {
 //                    parent.put("children_count", children + (Long) me.get("children_count"));
 //                });
 //        memoCacheTransformer.cidReOrdered(true);
-
 
 
 //        GroupByField<Map<String, Object>> groupByField = new GroupByField<>("category");

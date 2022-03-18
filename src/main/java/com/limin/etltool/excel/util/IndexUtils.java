@@ -19,8 +19,8 @@ import static java.util.Arrays.binarySearch;
 public abstract class IndexUtils {
 
     private static BiConsumer<char[], char[]> operator = (c1, c2) -> {
-        for (int i=0; i<c1.length; i++) {
-            if(c2[i] >= 0x41 && c2[i] <= 0x5B)
+        for (int i = 0; i < c1.length; i++) {
+            if (c2[i] >= 0x41 && c2[i] <= 0x5B)
                 c1[i] = c2[i];
         }
     };
@@ -28,8 +28,7 @@ public abstract class IndexUtils {
     private static final char[] LETTERS = IntStream.range(0, 26)
             .collect(() -> new char[26], (cs, i) -> cs[i] = (char) (i + 0x41), operator);
 
-    private static BiConsumer<int[], int[]> combine = (c1, c2) -> {
-    };
+    private static BiConsumer<int[], int[]> combine = (c1, c2) -> { };
 
 
     public static String toIndexString(int num) {
@@ -40,7 +39,7 @@ public abstract class IndexUtils {
                 ? p == 1
                 ? String.valueOf(LETTERS[(num - 1) % 26])
                 : toIndexString(p - 1) + LETTERS[(num - 1) % 26]
-                : toIndexString(p)     + LETTERS[(num - 1) % 26];
+                : toIndexString(p) + LETTERS[(num - 1) % 26];
     }
 
     public static int indexStringValue(String value) {

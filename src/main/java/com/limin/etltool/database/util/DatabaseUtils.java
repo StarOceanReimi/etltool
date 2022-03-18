@@ -45,7 +45,7 @@ public abstract class DatabaseUtils {
         StringBuffer result = new StringBuffer();
         while (matcher.find()) {
             String paramName = matcher.group(1).substring(1);
-            if (paramName.startsWith("default_")) {
+            if (paramName.startsWith("__default_")) {
                 String param = paramName.substring(8);
                 matcher.appendReplacement(result, "COALESCE(?, DEFAULT(" + param + "))");
                 paramNames.add(param);

@@ -122,7 +122,7 @@ public class ColumnMapping<T1, T2> extends CachedBeanOperationTransform<Stream<T
         columnMapping.addMapping("id", "sid").addMapping("body", "content").addColumnForMapBean("fake");
 
         ColumnEditing<Map<String, Object>> editor = new ColumnEditing<>();
-        editor.registerEditor("fake", (m) -> m.put("fake", ThreadLocalRandom.current().nextInt()));
+        editor.registerEditor("fake", (m) -> ThreadLocalRandom.current().nextInt());
 
         GroupByField<Map<String, Object>> byField = new GroupByField<>("content");
 

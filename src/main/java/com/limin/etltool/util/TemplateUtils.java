@@ -31,7 +31,7 @@ public abstract class TemplateUtils {
             } else {
                 int index = Integer.parseInt(indexStr);
                 checkArgument(index >= 0 && index < args.length, "index error");
-                param = args[Integer.parseInt(indexStr)];
+                param = args[index];
             }
             count++;
             if(param != null)

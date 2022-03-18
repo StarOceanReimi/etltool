@@ -203,29 +203,46 @@ public class DatabaseConfiguration {
 
     private static String findActiveProfile(ClassLoader cl) {
         String active = System.getenv("label");
-        log.debug("env spring profiles active: {}", active);
+        if (Strings.isNullOrEmpty(active)) return "dev";
+        return active;
+//        String oldLabels = System.getenv("old_labels");
+//        Set<String> oldLabelsSet = Strings.isNullOrEmpty(oldLabels)
+//                ? Collections.singleton("extraction")
+//                : Sets.newHashSet(Splitter.on(",").split(oldLabels));
+//
+//        if (oldLabelsSet.contains(active)) active = findOldActiveProfile(cl);
+//
+//        log.debug("env spring profiles active: {}", active);
+//        if (!Strings.isNullOrEmpty(active)) return active;
+//        InputStream stream = cl.getResourceAsStream("application.yml");
+//        if (stream != null) {
+//            log.debug("classloader found application.yml stream");
+//            Properties properties = loadProperties(stream);
+//            String profile = getProperty(properties, "spring.cloud.config.label");
+//            if (!Strings.isNullOrEmpty(profile)) {
+//                if (profile.contains("dev")) return "dev";
+//                return profile;
+//            }
+//        }
+//        stream = cl.getResourceAsStream("bootstrap.yml");
+//        if (stream != null) {
+//            log.debug("classloader found bootstrap.yml stream");
+//            Properties properties = loadProperties(stream);
+//            String profile = getProperty(properties, "spring.cloud.config.label");
+//            if (!Strings.isNullOrEmpty(profile)) {
+//                if (profile.contains("dev")) return "dev";
+//                return profile;
+//            }
+//        }
+//        return "prod";
+    }
+
+    private static String findOldActiveProfile(ClassLoader cl) {
+        String active = findEnvProfile(cl, ofNullable(System.getenv("SPRING_PROFILES_ACTIVE")).orElse(""));
         if (!Strings.isNullOrEmpty(active)) return active;
-        InputStream stream = cl.getResourceAsStream("application.yml");
-        if (stream != null) {
-            log.debug("classloader found application.yml stream");
-            Properties properties = loadProperties(stream);
-            String profile = getProperty(properties, "spring.cloud.config.label");
-            if (!Strings.isNullOrEmpty(profile)) {
-                if (profile.contains("dev")) return "dev";
-                return profile;
-            }
-        }
-        stream = cl.getResourceAsStream("bootstrap.yml");
-        if (stream != null) {
-            log.debug("classloader found bootstrap.yml stream");
-            Properties properties = loadProperties(stream);
-            String profile = getProperty(properties, "spring.cloud.config.label");
-            if (!Strings.isNullOrEmpty(profile)) {
-                if (profile.contains("dev")) return "dev";
-                return profile;
-            }
-        }
-        return "prod";
+        active = findEnvProfile(cl, ofNullable(System.getProperty("spring.profiles.active")).orElse(""));
+        if (!Strings.isNullOrEmpty(active)) return active;
+        return null;
     }
 
     public DatabaseConfiguration() {
@@ -292,7 +309,7 @@ public class DatabaseConfiguration {
 
 
     private static final Pattern DB_URL_PATTERN = Pattern.compile(
-            "^(?<protocal>.+)://(?<host>.+):(?<port>\\d+)/(?<database>[^?]*)\\??(?<attributes>.*)?");
+            "^(?<protocal>.+)://(?<host>.+):(?<port>\\d+):?(?<sid>\\w+)?/(?<database>[^?]*)\\??(?<attributes>.*)?");
 
     private String databaseName;
 

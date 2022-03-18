@@ -17,5 +17,5 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface ColumnWithDefault {
     //value can be "default_" or "timestamp_"
-    String value() default "default_";
+    String value() default "__default_";
 }

@@ -54,7 +54,7 @@ class GeneralBeanExcelDescriber<T> {
     GeneralBeanExcelDescriber(Class<T> clazz, Object outputContext) {
         Objects.requireNonNull(clazz);
         instanceCtor = ConstructorUtils.getAccessibleConstructor(clazz, new Class<?>[0]);
-        if(instanceCtor == null)
+        if (instanceCtor == null)
             throw Exceptions.inform("Class {} must have a no args constructor", clazz.getSimpleName());
         this.outputContext = outputContext;
         workSheetInfo = new WorkSheetInfo();
@@ -68,7 +68,7 @@ class GeneralBeanExcelDescriber<T> {
     }
 
     private void traverseClassToFindFields(Class<?> clazz) {
-        if(Object.class.equals(clazz)) return;
+        if (Object.class.equals(clazz)) return;
         Arrays.stream(clazz.getDeclaredFields())
                 .filter(field -> field.isAnnotationPresent(Column.class))
                 .map(this::toMeta)
@@ -105,19 +105,19 @@ class GeneralBeanExcelDescriber<T> {
     class WorkSheetInfo {
 
         private int headerStartRow = 0;
-        private int headerEndRow   = 0;
-        private String sheetName   = "";
-        private int sheetIndex     = 0;
+        private int headerEndRow = 0;
+        private String sheetName = "";
+        private int sheetIndex = 0;
         private final Set<CellStyleSetter> headerDefaultSetter = Sets.newHashSet();
         private final Set<CellStyleSetter> valueDefaultSetter = Sets.newHashSet();
 
         private void from(WorkSheet sheetInfo) {
-            if(sheetInfo == null) return;
+            if (sheetInfo == null) return;
             int[] headerRange = sheetInfo.headerRange();
             headerStartRow = headerRange[0];
-            headerEndRow   = headerRange[1];
-            sheetName      = sheetInfo.indexName();
-            sheetIndex     = sheetInfo.value();
+            headerEndRow = headerRange[1];
+            sheetName = sheetInfo.indexName();
+            sheetIndex = sheetInfo.value();
             newStyleSetters(headerDefaultSetter, sheetInfo.headerDefaultStyle());
             newStyleSetters(valueDefaultSetter, sheetInfo.valueDefaultStyle());
         }
@@ -127,12 +127,12 @@ class GeneralBeanExcelDescriber<T> {
     private void newStyleSetters(Set<CellStyleSetter> container, Class<? extends CellStyleSetter>[] styleSetter) {
         for (Class<? extends CellStyleSetter> setterClass : styleSetter) {
             Object setter = classCache.getIfPresent(setterClass);
-            if(setter == null) {
+            if (setter == null) {
                 setter = newInstance(setterClass);
-                if(setter != null)
+                if (setter != null)
                     classCache.put(setterClass, setter);
             }
-            if(setter != null) {
+            if (setter != null) {
                 container.add((CellStyleSetter) setter);
             }
         }
@@ -176,7 +176,7 @@ class GeneralBeanExcelDescriber<T> {
             Value value = column.cellValue();
             constantValue = value.constant();
             valueGenerator = value.generator().isInterface() ? null : (ValueGenerator) newInstance(value.generator());
-            if(valueGenerator != null)
+            if (valueGenerator != null)
                 valueGenerator.setContext(outputContext);
             valueStyleSetter = Sets.newLinkedHashSet();
             valueStyleSetter.addAll(workSheetInfo.valueDefaultSetter);
@@ -187,7 +187,7 @@ class GeneralBeanExcelDescriber<T> {
 
         void parseHeaderInfo(HeaderInfo[] headerInfo) {
 
-            if(headerInfo == null || headerInfo.length < 1){
+            if (headerInfo == null || headerInfo.length < 1) {
                 CellAddress cellAddress =
                         new CellAddress(workSheetInfo.headerStartRow, columnIdx);
                 headerMemo.put(cellAddress, field.getName());
@@ -197,7 +197,7 @@ class GeneralBeanExcelDescriber<T> {
             for (HeaderInfo info : headerInfo) {
                 CellRangeAddress address = CellRangeAddress.valueOf(info.address());
                 CellAddress realAddress;
-                if(address.isFullColumnRange()) {
+                if (address.isFullColumnRange()) {
                     realAddress = new CellAddress(workSheetInfo.headerStartRow, columnIdx);
                 } else if (address.getNumberOfCells() > 1) {
                     realAddress = new CellAddress(address.getFirstRow(), address.getFirstColumn());
@@ -206,19 +206,19 @@ class GeneralBeanExcelDescriber<T> {
                     realAddress = new CellAddress(address.getFirstRow(), address.getFirstColumn());
                 }
                 Object value = info.value();
-                if(Strings.isNullOrEmpty(String.valueOf(value))) {
+                if (Strings.isNullOrEmpty(String.valueOf(value))) {
                     Value v = info.dynamicValue();
                     value = v.constant();
-                    if(Strings.isNullOrEmpty(String.valueOf(value)) && !v.generator().isInterface()) {
+                    if (Strings.isNullOrEmpty(String.valueOf(value)) && !v.generator().isInterface()) {
                         ValueGenerator gen = (ValueGenerator) newInstance(v.generator());
-                        if(gen != null) {
+                        if (gen != null) {
                             gen.setContext(outputContext);
                             value = gen;
                         }
                     }
                 }
                 headerMemo.put(realAddress, value);
-                if(!headerStyleMemo.containsKey(realAddress)) {
+                if (!headerStyleMemo.containsKey(realAddress)) {
                     Set<CellStyleSetter> set = Sets.newLinkedHashSet();
                     set.addAll(workSheetInfo.headerDefaultSetter);
                     newStyleSetters(set, info.headerCellStyle());
@@ -230,24 +230,24 @@ class GeneralBeanExcelDescriber<T> {
         void writeHeader(Row headerRow) {
             //add merged area
             tobeMerged.forEach(addr -> {
-                if(!headerRow.getSheet().getMergedRegions().contains(addr)) {
+                if (!headerRow.getSheet().getMergedRegions().contains(addr)) {
                     headerRow.getSheet().addMergedRegion(addr);
                 }
             });
             Cell cell = headerRow.createCell(columnIdx);
-            if(headerMemo.containsKey(cell.getAddress())) {
+            if (headerMemo.containsKey(cell.getAddress())) {
                 Object value = headerMemo.get(cell.getAddress());
                 Set<CellStyleSetter> headerStyleSetter = headerStyleMemo.get(cell.getAddress());
-                if(CollectionUtils.isNotEmpty(headerStyleSetter)) {
+                if (CollectionUtils.isNotEmpty(headerStyleSetter)) {
                     CellStyle style = createStyle(cell);
                     headerStyleSetter.forEach(setter -> setter.applyStyle(cell, style));
                     cell.setCellStyle(style);
                 }
-                if(value instanceof String) {
+                if (value instanceof String) {
                     cell.setCellValue((String) value);
-                } else if(value instanceof ValueGenerator) {
+                } else if (value instanceof ValueGenerator) {
                     Object retValue = ((ValueGenerator) value).value(cell, null);
-                    if(retValue == ValueGenerator.BLANK_CELL)
+                    if (retValue == ValueGenerator.BLANK_CELL)
                         throw Exceptions.inform("Header Cannot to be blank!");
                     cell.setCellValue(String.valueOf(retValue));
                 }
@@ -267,48 +267,50 @@ class GeneralBeanExcelDescriber<T> {
                 Cell cell = row.createCell(columnIdx);
                 Object defaultValue = null;
                 Object value = null;
-                if(!Strings.isNullOrEmpty(constantValue)) {
+                if (!Strings.isNullOrEmpty(constantValue)) {
                     defaultValue = constantValue;
-                } else if(valueGenerator != null) {
+                } else if (valueGenerator != null) {
                     value = field.get(bean);
                     defaultValue = valueGenerator.value(cell, value);
                 }
-                if(defaultValue != null) {
+                if (defaultValue != null) {
                     value = defaultValue;
-                } else if(value == null) {
+                } else if (value == null) {
                     value = field.get(bean);
                 }
-                if(value instanceof Number) {
+                if (value instanceof Number) {
                     cell.setCellValue(((Number) value).doubleValue());
-                } else if(value instanceof CharSequence) {
+                } else if (value instanceof CharSequence) {
                     cell.setCellValue((String) value);
-                } else if(value instanceof Boolean) {
+                } else if (value instanceof Boolean) {
                     cell.setCellValue((Boolean) value);
-                } else if(value instanceof Date) {
+                } else if (value instanceof Date) {
                     df = ofNullable(df).orElse(LONG_DATE_FORMAT);
                     cell.setCellValue((Date) value);
-                } else if(value instanceof Calendar) {
+                } else if (value instanceof Calendar) {
                     df = ofNullable(df).orElse(LONG_DATE_FORMAT);
                     cell.setCellValue((Calendar) value);
-                } else if(value instanceof LocalDateTime) {
+                } else if (value instanceof LocalDateTime) {
                     df = ofNullable(df).orElse(LONG_DATE_FORMAT);
                     cell.setCellValue((LocalDateTime) value);
-                } else if(value instanceof LocalDate) {
+                } else if (value instanceof LocalDate) {
                     df = ofNullable(df).orElse(SHORT_DATE_FORMAT);
                     cell.setCellValue(((LocalDate) value).atStartOfDay());
                 } else {
-                    if(value != ValueGenerator.BLANK_CELL) {
+                    if (value != ValueGenerator.BLANK_CELL) {
                         ofNullable(value).map(Object::toString).ifPresent(cell::setCellValue);
                     }
                 }
-                CellStyle style = createStyle(cell);
-                if(!valueStyleSetter.isEmpty())
-                    valueStyleSetter.forEach(setter -> setter.applyStyle(cell, style));
-                if(df != null) {
-                    DataFormat format = cell.getSheet().getWorkbook().createDataFormat();
-                    style.setDataFormat(format.getFormat(df));
+                if (!valueStyleSetter.isEmpty() || defaultValue != null) {
+                    CellStyle style = createStyle(cell);
+                    if (!valueStyleSetter.isEmpty())
+                        valueStyleSetter.forEach(setter -> setter.applyStyle(cell, style));
+                    if (df != null) {
+                        DataFormat format = cell.getSheet().getWorkbook().createDataFormat();
+                        style.setDataFormat(format.getFormat(df));
+                    }
+                    cell.setCellStyle(style);
                 }
-                cell.setCellStyle(style);
             } catch (IllegalAccessException e) {
                 log.warn("cannot access field: {}", field.getName());
             }
@@ -317,22 +319,22 @@ class GeneralBeanExcelDescriber<T> {
         void setValue(Row row, Map<Cell, Cell> mergeContext, Object instance) {
 
             Cell cell = Objects.requireNonNull(row).getCell(columnIdx);
-            if(cell == null) return;
+            if (cell == null) return;
             Cell realCell = ofNullable(mergeContext.get(cell)).orElse(cell);
             try {
                 Class<?> type = field.getType();
                 Object value = null;
-                if(realCell.getCellType() == CellType.NUMERIC) {
-                    if(LocalDate.class.isAssignableFrom(type)) {
+                if (realCell.getCellType() == CellType.NUMERIC) {
+                    if (LocalDate.class.isAssignableFrom(type)) {
                         value = realCell.getLocalDateTimeCellValue().toLocalDate();
-                    } else if(LocalDateTime.class.isAssignableFrom(type)) {
+                    } else if (LocalDateTime.class.isAssignableFrom(type)) {
                         value = realCell.getLocalDateTimeCellValue();
                     } else {
                         value = ConvertUtils.convert(realCell.getNumericCellValue(), type);
                     }
-                } else if(realCell.getCellType() == CellType.STRING) {
+                } else if (realCell.getCellType() == CellType.STRING) {
                     value = ConvertUtils.convert(realCell.getStringCellValue(), type);
-                } else if(realCell.getCellType() == CellType.BOOLEAN) {
+                } else if (realCell.getCellType() == CellType.BOOLEAN) {
                     value = ConvertUtils.convert(realCell.getBooleanCellValue(), type);
                 }
                 field.setAccessible(true);

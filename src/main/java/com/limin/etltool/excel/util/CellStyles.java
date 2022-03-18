@@ -11,9 +11,10 @@ public abstract class CellStyles {
 
     public static final class FontNormalStyle implements CellStyleSetter {
         AtomicReference<Font> fontRef = new AtomicReference<>(null);
+
         @Override
         public void applyStyle(Cell cell, CellStyle style) {
-            if(fontRef.get() == null) {
+            if (fontRef.get() == null) {
                 fontRef.compareAndSet(null, cell.getSheet().getWorkbook().createFont());
             }
             Font font = fontRef.get();
@@ -24,9 +25,10 @@ public abstract class CellStyles {
 
     public static final class FontBoldStyle implements CellStyleSetter {
         AtomicReference<Font> fontRef = new AtomicReference<>(null);
+
         @Override
         public void applyStyle(Cell cell, CellStyle style) {
-            if(fontRef.get() == null) {
+            if (fontRef.get() == null) {
                 fontRef.compareAndSet(null, cell.getSheet().getWorkbook().createFont());
             }
             Font font = fontRef.get();

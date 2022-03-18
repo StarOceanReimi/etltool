@@ -2,6 +2,7 @@ package com.limin.etltool.database;
 
 import com.google.common.base.Strings;
 import com.google.common.base.Suppliers;
+import com.limin.etltool.core.OutputReport;
 import com.limin.etltool.util.Exceptions;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.MapUtils;
@@ -32,22 +33,21 @@ public abstract class AbstractDatabase implements Database {
 
     private final DatabaseConfiguration configuration;
 
-    private final DataSource delegate;
+    private final Supplier<DataSource> delegate;
 
     private boolean usePool = false;
 
-    private final Supplier<String> configuredUrl;
-
     public AbstractDatabase(DatabaseConfiguration configuration) {
         this.configuration = configuration;
-        configuredUrl = Suppliers.memoize(() -> constructUri(configuration));
-        BasicDataSource basicDataSource = new BasicDataSource();
-        basicDataSource.setDriverClassName(configuration.getDriverClassName());
-        basicDataSource.setUrl(configuredUrl.get());
-        basicDataSource.setUsername(configuration.getUsername());
-        basicDataSource.setPassword(configuration.getPassword());
+        delegate = Suppliers.memoize(() -> {
+            BasicDataSource basicDataSource = new BasicDataSource();
+            basicDataSource.setDriverClassName(configuration.getDriverClassName());
+            basicDataSource.setUrl(constructUri(configuration));
+            basicDataSource.setUsername(configuration.getUsername());
+            basicDataSource.setPassword(configuration.getPassword());
+            return basicDataSource;
+        });
         initDriverManager();
-        delegate = basicDataSource;
     }
 
     protected void initDriverManager() {
@@ -56,10 +56,6 @@ public abstract class AbstractDatabase implements Database {
         } catch (ClassNotFoundException e) {
             Exceptions.rethrow(e);
         }
-    }
-
-    public static void main(String[] args) {
-
     }
 
     private static String constructUri(DatabaseConfiguration configuration) {
@@ -78,36 +74,29 @@ public abstract class AbstractDatabase implements Database {
     @Override
     public Connection getConnection() {
         try {
-            if (usePool) return delegate.getConnection();
+            if (usePool) return delegate.get().getConnection();
             return newConnection(null, null);
         } catch (SQLException ex) {
             throw propagate(ex);
         }
-//        if (pool == null) return genConnection();
-//        if (pool.isClosed()) pool = createPool(poolConfig);
-//        try {
-//            return new PooledConnection(pool.borrowObject(), pool);
-//        } catch (Exception e) {
-//            throw propagate(e);
-//        }
     }
 
     @Override
     public Connection getConnection(String username, String password) throws SQLException {
-        if (usePool) return delegate.getConnection(username, password);
+        if (usePool) return delegate.get().getConnection(username, password);
         return newConnection(username, password);
     }
 
     protected Connection newConnection(String username, String password) throws SQLException {
         if (Strings.isNullOrEmpty(username)) username = configuration.getUsername();
         if (Strings.isNullOrEmpty(password)) password = configuration.getPassword();
-        return DriverManager.getConnection(configuredUrl.get(), username, password);
+        return DriverManager.getConnection(constructUri(configuration), username, password);
     }
 
     @Override
     public void setPoolConfig(GenericObjectPoolConfig poolConfig) {
-        if (delegate instanceof BasicDataSource) {
-            BasicDataSource dataSource = (BasicDataSource) delegate;
+        if (delegate.get() instanceof BasicDataSource) {
+            BasicDataSource dataSource = (BasicDataSource) delegate.get();
             dataSource.setMaxIdle(poolConfig.getMaxIdle());
             dataSource.setMinIdle(poolConfig.getMinIdle());
             dataSource.setMaxWaitMillis(poolConfig.getMaxWaitMillis());
@@ -123,9 +112,9 @@ public abstract class AbstractDatabase implements Database {
 
     @Override
     public void shutdownPool() {
-        if (delegate instanceof BasicDataSource) {
+        if (delegate.get() instanceof BasicDataSource) {
             try {
-                ((BasicDataSource) delegate).close();
+                ((BasicDataSource) delegate.get()).close();
             } catch (SQLException ex) {
                 log.error("shutdown pool error: ", ex);
             }
@@ -166,37 +155,37 @@ public abstract class AbstractDatabase implements Database {
 
     @Override
     public <T> T unwrap(Class<T> iface) throws SQLException {
-        return delegate.unwrap(iface);
+        return delegate.get().unwrap(iface);
     }
 
     @Override
     public boolean isWrapperFor(Class<?> iface) throws SQLException {
-        return delegate.isWrapperFor(iface);
+        return delegate.get().isWrapperFor(iface);
     }
 
     @Override
     public PrintWriter getLogWriter() throws SQLException {
-        return delegate.getLogWriter();
+        return delegate.get().getLogWriter();
     }
 
     @Override
     public void setLogWriter(PrintWriter out) throws SQLException {
-        delegate.setLogWriter(out);
+        delegate.get().setLogWriter(out);
     }
 
     @Override
     public void setLoginTimeout(int seconds) throws SQLException {
-        delegate.setLoginTimeout(seconds);
+        delegate.get().setLoginTimeout(seconds);
     }
 
     @Override
     public int getLoginTimeout() throws SQLException {
-        return delegate.getLoginTimeout();
+        return delegate.get().getLoginTimeout();
     }
 
     @Override
     public Logger getParentLogger() throws SQLFeatureNotSupportedException {
-        return delegate.getParentLogger();
+        return delegate.get().getParentLogger();
     }
 
 }
